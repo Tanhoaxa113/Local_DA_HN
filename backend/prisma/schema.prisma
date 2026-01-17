@@ -1,0 +1,430 @@
+// Prisma schema for Clothing Shop System
+// Database: MySQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// User & Authentication
+// ==========================================
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // CUSTOMER, SALES_STAFF, WAREHOUSE, SALES_MANAGER, ADMIN
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String
+  fullName      String
+  phone         String?
+  avatar        String?
+  isActive      Boolean   @default(true)
+  roleId        Int
+  loyaltyPoints Int       @default(0)
+  tierId        Int       @default(1)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  role                Role                 @relation(fields: [roleId], references: [id])
+  tier                MemberTier           @relation(fields: [tierId], references: [id])
+  addresses           Address[]
+  cart                Cart?
+  orders              Order[]
+  memberTierUsageLogs MemberTierUsageLog[]
+  refreshTokens       RefreshToken[]
+
+  @@index([email])
+  @@index([roleId])
+  @@index([tierId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique @db.VarChar(500)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ==========================================
+// Loyalty System
+// ==========================================
+
+model MemberTier {
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique // BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+  minPoints          Int      @default(0)
+  discountPercent    Decimal  @default(0) @db.Decimal(5, 2)
+  monthlyDiscountLimit Int    @default(0) // Max discount uses per month
+  pointMultiplier    Decimal  @default(1) @db.Decimal(3, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  users              User[]
+  memberTierUsageLogs MemberTierUsageLog[]
+
+  @@map("member_tiers")
+}
+
+model MemberTierUsageLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  tierId     Int
+  month      Int      // 1-12
+  year       Int
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier MemberTier @relation(fields: [tierId], references: [id])
+
+  @@unique([userId, tierId, month, year])
+  @@index([userId, month, year])
+  @@map("member_tier_usage_logs")
+}
+
+// ==========================================
+// Product Management
+// ==========================================
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  name        String
+  slug        String     @unique
+  description String?    @db.Text
+  image       String?
+  parentId    Int?
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@index([slug])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Brand {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  slug        String    @unique
+  logo        String?
+  description String?   @db.Text
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?   @db.Text
+  categoryId  Int
+  brandId     Int?
+  isActive    Boolean   @default(true)
+  isFeatured  Boolean   @default(false)
+  minPrice    Decimal   @default(0) @db.Decimal(12, 2)
+  totalSold   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category Category         @relation(fields: [categoryId], references: [id])
+  brand    Brand?           @relation(fields: [brandId], references: [id])
+  variants ProductVariant[]
+  images   ProductImage[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([minPrice])
+  @@index([totalSold])
+  @@map("products")
+}
+
+model ProductVariant {
+  id             Int      @id @default(autoincrement())
+  productId      Int
+  sku            String   @unique
+  size           String
+  color          String
+  colorCode      String?  // Hex code for color display
+  price          Decimal  @db.Decimal(12, 2)
+  compareAtPrice Decimal? @db.Decimal(12, 2) // Original price for sale display
+  costPrice      Decimal? @db.Decimal(12, 2) // For profit calculation
+  stock          Int      @default(0) // Physical stock in warehouse
+  availableStock Int      @default(0) // Logical stock for ordering (stock - reserved)
+  lowStockThreshold Int   @default(5)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  images     ProductImage[]
+
+  @@index([productId])
+  @@index([sku])
+  @@index([size, color])
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  variantId Int?
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([variantId])
+  @@map("product_images")
+}
+
+// ==========================================
+// Shopping Cart
+// ==========================================
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  variantId Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// ==========================================
+// Address & Location
+// ==========================================
+
+model Address {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  fullName      String
+  phone         String
+  provinceId    Int
+  provinceName  String
+  wardId        Int
+  wardName      String
+  streetAddress String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+// ==========================================
+// Order Management
+// ==========================================
+
+enum OrderStatus {
+  PENDING_PAYMENT       // Chờ thanh toán (giữ kho 15 phút)
+  PROCESSING_FAILED     // Hủy do lỗi/timeout
+  PENDING_CONFIRMATION  // Chờ xác nhận (đã TT hoặc COD)
+  PREPARING             // Đang đóng gói (trừ stock vật lý)
+  READY_TO_SHIP         // Sẵn sàng giao
+  IN_TRANSIT            // Đang vận chuyển
+  OUT_FOR_DELIVERY      // Đang giao
+  DELIVERY_FAILED       // Giao thất bại
+  RETURNED_TO_WAREHOUSE // Hoàn kho (cộng stock)
+  DELIVERED             // Đã giao
+  REFUND_REQUESTED      // Yêu cầu hoàn tiền
+  REFUNDING             // Đang hoàn tiền (admin approved)
+  REFUNDED              // Đã hoàn tiền
+  REFUND_CONFIRMED      // Khách xác nhận đã nhận tiền (hoặc auto 3 ngày)
+  COMPLETED             // Hoàn thành (3-7 ngày sau delivered, cộng điểm)
+  CANCELLED             // Đã hủy
+}
+
+enum PaymentMethod {
+  COD         // Cash on delivery
+  VNPAY       // VNPAY gateway
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id              Int           @id @default(autoincrement())
+  orderNumber     String        @unique
+  userId          Int
+  addressId       Int
+  status          OrderStatus   @default(PENDING_PAYMENT)
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(UNPAID)
+  subtotal        Decimal       @db.Decimal(12, 2)
+  shippingFee     Decimal       @default(0) @db.Decimal(12, 2)
+  discountAmount  Decimal       @default(0) @db.Decimal(12, 2)
+  loyaltyDiscount Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount     Decimal       @db.Decimal(12, 2)
+  loyaltyPointsEarned Int       @default(0)
+  loyaltyPointsUsed   Int       @default(0)
+  note            String?       @db.Text
+  lockedUntil     DateTime?     // Redis lock expiry reference
+  confirmedAt     DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id])
+  address  Address         @relation(fields: [addressId], references: [id])
+  items    OrderItem[]
+  payment  Payment?
+  statusHistory OrderStatusHistory[]
+
+  @@index([orderNumber])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           Int     @id @default(autoincrement())
+  orderId      Int
+  variantId    Int
+  productName  String  // Snapshot at order time
+  variantInfo  String  // e.g., "Size: M, Color: Black"
+  sku          String
+  quantity     Int
+  unitPrice    Decimal @db.Decimal(12, 2)
+  totalPrice   Decimal @db.Decimal(12, 2)
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id          Int         @id @default(autoincrement())
+  orderId     Int
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  note        String?     @db.Text
+  changedBy   Int?        // User ID who made the change
+  createdAt   DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_histories")
+}
+
+// ==========================================
+// Payment
+// ==========================================
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  orderId         Int           @unique
+  method          PaymentMethod
+  amount          Decimal       @db.Decimal(12, 2)
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       // VNPAY transaction ID
+  bankCode        String?
+  cardType        String?
+  paymentData     Json?         // Store raw payment gateway response
+  paidAt          DateTime?
+  failedAt        DateTime?
+  failReason      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("payments")
+}
+
+// ==========================================
+// Stock Lock (for tracking in DB, main lock in Redis)
+// ==========================================
+
+model StockLock {
+  id        Int      @id @default(autoincrement())
+  variantId Int
+  orderId   Int?
+  quantity  Int
+  lockKey   String   @unique // Redis lock key reference
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([variantId])
+  @@index([expiresAt])
+  @@map("stock_locks")
+}
