@@ -38,6 +38,7 @@ export const PAGE_ACCESS = {
     [ROLES.WAREHOUSE]: [
         "dashboard",
         "orders",
+        "products",
     ],
 };
 
@@ -74,6 +75,7 @@ export const ACTIONS = {
     ORDER_CANCEL: "order:cancel",
     ORDER_REFUND_APPROVE: "order:refund_approve", // REFUND_REQUESTED → REFUNDING
     ORDER_REFUND_PAID: "order:refund_paid",       // REFUNDING → REFUNDED
+    PAYMENT_CONFIRM_COD: "payment:confirm_cod",   // Confirm COD payment
 };
 
 // Action permissions by role
@@ -97,7 +99,9 @@ export const ACTION_PERMISSIONS = {
         ACTIONS.ORDER_READY_SHIP,
         ACTIONS.ORDER_START_SHIPPING,
         ACTIONS.ORDER_OUT_DELIVERY,
+        ACTIONS.ORDER_OUT_DELIVERY,
         ACTIONS.ORDER_DELIVERED,
+        ACTIONS.PAYMENT_CONFIRM_COD,
     ],
 };
 

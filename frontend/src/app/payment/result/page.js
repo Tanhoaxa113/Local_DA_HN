@@ -35,7 +35,11 @@ export default function PaymentResultPage() {
     useEffect(() => {
         const success = searchParams.get("success") === "true";
         const orderId = searchParams.get("orderId") || "";
-        const orderNumber = searchParams.get("orderNumber") || "";
+        let orderNumber = searchParams.get("orderNumber") || "";
+        // Clean suffix if present
+        if (orderNumber && orderNumber.includes('_')) {
+            orderNumber = orderNumber.split('_')[0];
+        }
         const message = searchParams.get("message") || "";
 
         setResult({ success, orderId, orderNumber, message });

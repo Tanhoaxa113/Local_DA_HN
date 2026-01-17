@@ -78,7 +78,8 @@ const createFromCart = async (userId, orderData) => {
 
     // Calculate order totals
     const subtotal = cart.subtotal;
-    const shippingFee = calculateShippingFee(subtotal); // Can be enhanced later
+    const shippingMethod = orderData.shippingMethod || 'standard';
+    const shippingFee = calculateShippingFee(subtotal, shippingMethod);
 
     // Apply tier discount using lazy reset logic
     const loyaltyService = require('./loyalty.service');
@@ -113,6 +114,7 @@ const createFromCart = async (userId, orderData) => {
                 userId,
                 addressId,
                 paymentMethod,
+                shippingMethod,
                 status: OrderStatus.PENDING_PAYMENT,
                 paymentStatus: paymentMethod === 'COD' ? 'UNPAID' : 'PENDING',
                 subtotal,
@@ -622,18 +624,19 @@ const awardLoyaltyPoints = async (orderId) => {
     await loyaltyService.checkTierUpgrade(order.userId);
 };
 
+
 /**
  * Calculate shipping fee
  * @param {number} subtotal - Order subtotal
+ * @param {string} shippingMethod - Shipping method (standard/express)
  * @returns {number} Shipping fee
  */
-const calculateShippingFee = (subtotal) => {
-    // Free shipping for orders over 500,000 VND
-    if (subtotal >= 500000) {
-        return 0;
+const calculateShippingFee = (subtotal, shippingMethod = 'standard') => {
+    if (shippingMethod === 'express') {
+        return 30000;
     }
-    // Default shipping fee
-    return 30000;
+    // Free shipping for all other cases (standard)
+    return 0;
 };
 
 /**

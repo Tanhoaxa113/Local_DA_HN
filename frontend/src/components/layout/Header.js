@@ -113,7 +113,7 @@ export default function Header() {
             {/* Announcement Bar */}
             <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-medium">
                 <span className="hidden sm:inline">🎉 </span>
-                Miễn phí vận chuyển cho đơn hàng trên 500.000₫
+                Miễn Phí vận chuyển cho mọi đơn hàng
             </div>
 
             {/* Main Header */}

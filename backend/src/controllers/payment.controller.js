@@ -16,10 +16,12 @@ const getClientIp = (req) => {
     if (forwarded) {
         return forwarded.split(',')[0].trim();
     }
-    return req.connection?.remoteAddress ||
+    const ip = req.connection?.remoteAddress ||
         req.socket?.remoteAddress ||
         req.ip ||
         '127.0.0.1';
+
+    return ip === '::1' ? '127.0.0.1' : ip;
 };
 
 /**
@@ -49,9 +51,15 @@ const vnpayReturn = asyncHandler(async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const redirectUrl = new URL(`${frontendUrl}/payment/result`);
 
+    // Ensure orderNumber is clean (strip timestamp suffix if present)
+    let orderNumber = result.orderNumber;
+    if (orderNumber && typeof orderNumber === 'string' && orderNumber.includes('_')) {
+        orderNumber = orderNumber.split('_')[0];
+    }
+
     redirectUrl.searchParams.set('success', result.success);
     redirectUrl.searchParams.set('orderId', result.orderId);
-    redirectUrl.searchParams.set('orderNumber', result.orderNumber);
+    redirectUrl.searchParams.set('orderNumber', orderNumber);
     redirectUrl.searchParams.set('message', result.message);
 
     res.redirect(redirectUrl.toString());
@@ -84,9 +92,20 @@ const getPaymentByOrder = asyncHandler(async (req, res) => {
     sendSuccess(res, payment, 'Payment retrieved');
 });
 
+/**
+ * Confirm COD payment collected
+ * PUT /api/payment/confirm-cod
+ */
+const confirmCOD = asyncHandler(async (req, res) => {
+    const { orderId } = req.body;
+    const result = await paymentService.confirmCOD(parseInt(orderId, 10));
+    sendSuccess(res, result, 'COD payment confirmed');
+});
+
 module.exports = {
     createPayment,
     vnpayReturn,
     vnpayIpn,
     getPaymentByOrder,
+    confirmCOD,
 };

@@ -21,7 +21,7 @@ export default function AdminSettingsPage() {
     const [shipping, setShipping] = useState({
         freeShippingThreshold: 0,
         standardShippingFee: 0,
-        expressShippingFee: 50000,
+        expressShippingFee: 30000,
     });
 
     const [saving, setSaving] = useState(false);

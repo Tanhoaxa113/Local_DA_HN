@@ -305,6 +305,7 @@ export default function CheckoutPage() {
             const orderData = {
                 addressId,
                 paymentMethod: formData.paymentMethod,
+                shippingMethod: formData.shippingMethod,
                 notes: formData.notes,
                 items: cart.items.map((item) => ({
                     variantId: item.variant?.id || item.variantId,
@@ -343,7 +344,7 @@ export default function CheckoutPage() {
 
     // Calculate totals
     const subtotal = cart.total;
-    const shippingFee = formData.shippingMethod === "express" ? 50000 : 0;
+    const shippingFee = formData.shippingMethod === "express" ? 30000 : 0;
     const tierDiscountAmount = tierDiscount?.eligible
         ? Math.floor((subtotal * tierDiscount.discountPercent) / 100)
         : 0;
@@ -705,7 +706,7 @@ export default function CheckoutPage() {
                                                     <p className="font-medium text-foreground">Giao hàng nhanh</p>
                                                     <p className="text-sm text-muted">1-2 ngày làm việc</p>
                                                 </div>
-                                                <span className="font-medium text-foreground">{formatPrice(50000)}</span>
+                                                <span className="font-medium text-foreground">{formatPrice(30000)}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -756,23 +757,7 @@ export default function CheckoutPage() {
                                             </div>
                                         </label>
 
-                                        <label className="flex items-center gap-4 p-4 border border-border rounded-lg cursor-pointer hover:border-accent transition-colors">
-                                            <input
-                                                type="radio"
-                                                name="paymentMethod"
-                                                value="BANK_TRANSFER"
-                                                checked={formData.paymentMethod === "BANK_TRANSFER"}
-                                                onChange={handleChange}
-                                                className="w-4 h-4 text-accent"
-                                            />
-                                            <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                                                🏦
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="font-medium text-foreground">Chuyển khoản ngân hàng</p>
-                                                <p className="text-sm text-muted">Chuyển khoản trực tiếp</p>
-                                            </div>
-                                        </label>
+
                                     </div>
 
                                     {/* Order Summary Preview */}

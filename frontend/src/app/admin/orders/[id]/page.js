@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, paymentAPI } from "@/lib/api";
 import { formatPrice, formatDate, getOrderStatusInfo, getImageUrl } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { canTransitionOrderStatus, filterStatusOptionsByRole } from "@/lib/permissions";
+import { canTransitionOrderStatus, filterStatusOptionsByRole, ACTIONS, canPerformAction } from "@/lib/permissions";
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -48,6 +48,7 @@ const paymentStatusConfig = {
     PAID: { label: "Đã thanh toán", class: "badge-success" },
     FAILED: { label: "Thất bại", class: "badge-error" },
     REFUNDED: { label: "Đã hoàn tiền", class: "badge-accent" },
+    COD_COLLECTED: { label: "Đã thu COD", class: "badge-success" },
 };
 
 export default function AdminOrderDetailPage() {
@@ -185,6 +186,29 @@ export default function AdminOrderDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Confirm COD Payment Button */}
+                    {order &&
+                        order.paymentMethod === 'COD' &&
+                        (order.paymentStatus === 'PENDING' || order.paymentStatus === 'UNPAID') &&
+                        !['CANCELLED', 'REFUNDED', 'COMPLETED'].includes(order.status) &&
+                        canPerformAction(userRole, ACTIONS.PAYMENT_CONFIRM_COD) && (
+                            <button
+                                onClick={async () => {
+                                    if (!confirm('Xác nhận đã thu tiền COD cho đơn hàng này?')) return;
+                                    try {
+                                        await paymentAPI.confirmCOD(order.id);
+                                        fetchOrder(); // Reload
+                                    } catch (err) {
+                                        alert(err.message || 'Lỗi khi xác nhận thanh toán');
+                                    }
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                                <CheckIcon />
+                                Xác nhận thu COD
+                            </button>
+                        )}
+
                     <button
                         onClick={() => window.print()}
                         className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-secondary transition-colors"

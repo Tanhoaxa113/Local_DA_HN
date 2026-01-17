@@ -211,28 +211,6 @@ export default function AccountPage() {
                 )}
             </div>
 
-            {/* Loyalty Points Card */}
-            <div className="bg-card rounded-xl border border-border p-6">
-                <h2 className="text-xl font-semibold text-foreground mb-4">
-                    Điểm thưởng
-                </h2>
-                <div className="flex items-center gap-6">
-                    <div className="text-center">
-                        <p className="text-3xl font-bold text-accent">{user?.loyaltyPoints || 0}</p>
-                        <p className="text-sm text-muted">điểm</p>
-                    </div>
-                    <div className="h-12 w-px bg-border" />
-                    <div>
-                        <p className="text-sm text-muted">Hạng thành viên hiện tại</p>
-                        <p className="font-semibold text-foreground">{user?.memberTier?.name || "Thường"}</p>
-                        {user?.memberTier?.discountPercent > 0 && (
-                            <p className="text-sm text-success">
-                                Giảm {user?.memberTier?.discountPercent}% cho mỗi đơn hàng
-                            </p>
-                        )}
-                    </div>
-                </div>
-            </div>
 
             {/* Account Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -30,6 +30,9 @@ router.post('/create', authenticate, validate(createPaymentSchema), paymentContr
 // GET /api/payment/order/:orderId - Get payment by order ID
 router.get('/order/:orderId', authenticate, paymentController.getPaymentByOrder);
 
+// PUT /api/payment/confirm-cod - Confirm COD payment (Warehouse/Admin)
+router.put('/confirm-cod', authenticate, paymentController.confirmCOD);
+
 /**
  * VNPAY callback routes (no auth required - called by VNPAY)
  */

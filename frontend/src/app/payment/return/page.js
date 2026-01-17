@@ -43,6 +43,15 @@ function PaymentReturnContent() {
                 vnpParams[key] = value;
             });
 
+            // Helper to strip suffix
+            const cleanOrderNumber = (ref) => {
+                if (!ref) return "";
+                if (typeof ref === 'string' && ref.includes('_')) {
+                    return ref.split('_')[0];
+                }
+                return ref;
+            };
+
             // If we have vnp_ResponseCode, verify with backend
             if (vnpParams.vnp_ResponseCode) {
                 try {
@@ -51,13 +60,15 @@ function PaymentReturnContent() {
                         setResult({
                             success: response.data?.success || vnpParams.vnp_ResponseCode === "00",
                             orderId: response.data?.orderId || "",
-                            orderNumber: response.data?.orderNumber || vnpParams.vnp_TxnRef || "",
+                            orderNumber: cleanOrderNumber(response.data?.orderNumber || vnpParams.vnp_TxnRef),
                             message: response.data?.message || getVNPayMessage(vnpParams.vnp_ResponseCode),
                         });
                     } else {
+                        // If API call "failed" (e.g. was a redirect), we fall back to params
+                        // But if it was a redirect (fetch returned HTML), response.success is undefined
                         setResult({
                             success: vnpParams.vnp_ResponseCode === "00",
-                            orderNumber: vnpParams.vnp_TxnRef || "",
+                            orderNumber: cleanOrderNumber(vnpParams.vnp_TxnRef),
                             message: getVNPayMessage(vnpParams.vnp_ResponseCode),
                         });
                     }
@@ -65,7 +76,7 @@ function PaymentReturnContent() {
                     // Fallback to local parsing
                     setResult({
                         success: vnpParams.vnp_ResponseCode === "00",
-                        orderNumber: vnpParams.vnp_TxnRef || "",
+                        orderNumber: cleanOrderNumber(vnpParams.vnp_TxnRef),
                         message: getVNPayMessage(vnpParams.vnp_ResponseCode),
                     });
                 }

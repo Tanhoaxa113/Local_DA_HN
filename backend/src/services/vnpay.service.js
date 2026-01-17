@@ -27,20 +27,33 @@ const sortObject = (obj) => {
 };
 
 /**
- * Format date to VNPay format (yyyyMMddHHmmss)
+ * Format date to VNPay format (yyyyMMddHHmmss) in GMT+7
  * @param {Date} date - Date to format
  * @returns {string} Formatted date string
  */
 const formatDate = (date) => {
-    const pad = (n) => n.toString().padStart(2, '0');
+    // Ensure we use GMT+7 (Asia/Ho_Chi_Minh)
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    });
+
+    const parts = formatter.formatToParts(date);
+    const getPart = (type) => parts.find(p => p.type === type).value;
 
     return (
-        date.getFullYear().toString() +
-        pad(date.getMonth() + 1) +
-        pad(date.getDate()) +
-        pad(date.getHours()) +
-        pad(date.getMinutes()) +
-        pad(date.getSeconds())
+        getPart('year') +
+        getPart('month') +
+        getPart('day') +
+        getPart('hour') +
+        getPart('minute') +
+        getPart('second')
     );
 };
 
@@ -57,6 +70,7 @@ const createSignature = (data, secret) => {
         .digest('hex');
 };
 
+
 /**
  * Create VNPAY payment URL
  * @param {object} orderInfo - Order information
@@ -72,7 +86,10 @@ const createPaymentUrl = (orderInfo, clientIp) => {
 
     const date = new Date();
     const createDate = formatDate(date);
-    const expireDate = formatDate(new Date(date.getTime() + 15 * 60 * 1000)); // 15 minutes
+
+    // Add 15 minutes for expiration
+    const expireDateRaw = new Date(date.getTime() + 15 * 60 * 1000);
+    const expireDate = formatDate(expireDateRaw);
 
     // Sanitize orderDescription - remove special characters that VNPAY doesn't accept
     const sanitizedDescription = (orderDescription || `Thanh toan don hang ${orderNumber}`)
@@ -83,6 +100,9 @@ const createPaymentUrl = (orderInfo, clientIp) => {
         .replace(/[^a-zA-Z0-9\s]/g, '')
         .substring(0, 255);
 
+    // Sanitize IP
+    const sanitizedIp = (!clientIp || clientIp === '::1') ? '127.0.0.1' : clientIp;
+
     // Build params
     let vnpParams = {
         vnp_Version: '2.1.0',
@@ -90,12 +110,12 @@ const createPaymentUrl = (orderInfo, clientIp) => {
         vnp_TmnCode: config.vnpay.tmnCode,
         vnp_Locale: language,
         vnp_CurrCode: 'VND',
-        vnp_TxnRef: orderNumber,
+        vnp_TxnRef: `${orderNumber}_${date.getTime()}`, // Make unique
         vnp_OrderInfo: sanitizedDescription,
         vnp_OrderType: 'other',
         vnp_Amount: Math.round(amount * 100), // VNPay requires amount * 100
         vnp_ReturnUrl: config.vnpay.returnUrl,
-        vnp_IpAddr: clientIp,
+        vnp_IpAddr: sanitizedIp,
         vnp_CreateDate: createDate,
         vnp_ExpireDate: expireDate,
     };
@@ -140,6 +160,8 @@ const verifySignature = (vnpParams) => {
 
     // Sort and create signature - use URLSearchParams to match createPaymentUrl
     const sortedParams = sortObject(params);
+    // VNPAY 2.1.0 requires sorting and then using URLSearchParams to create query string for signing
+    // This must match exactly how the query string was created for the request
     const signData = new URLSearchParams(sortedParams).toString();
     const expectedSignature = createSignature(signData, config.vnpay.hashSecret);
 
@@ -152,8 +174,14 @@ const verifySignature = (vnpParams) => {
  * @returns {object} Parsed response
  */
 const parseResponse = (vnpParams) => {
+    // Strip suffix from orderNumber (TxnRef)
+    let orderNumber = vnpParams.vnp_TxnRef;
+    if (orderNumber && orderNumber.includes('_')) {
+        orderNumber = orderNumber.split('_')[0];
+    }
+
     return {
-        orderNumber: vnpParams.vnp_TxnRef,
+        orderNumber: orderNumber,
         amount: parseInt(vnpParams.vnp_Amount, 10) / 100,
         transactionId: vnpParams.vnp_TransactionNo,
         bankCode: vnpParams.vnp_BankCode,

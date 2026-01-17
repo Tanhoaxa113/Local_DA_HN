@@ -304,6 +304,12 @@ export const paymentAPI = {
         const searchParams = new URLSearchParams(params);
         return fetchAPI(`/payment/vnpay/return?${searchParams.toString()}`);
     },
+
+    confirmCOD: (orderId) =>
+        fetchAPI(`/payment/confirm-cod`, {
+            method: "PUT",
+            body: JSON.stringify({ orderId }),
+        }),
 };
 
 /**

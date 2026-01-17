@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ordersAPI, productsAPI } from "@/lib/api";
 import { formatPrice, formatDate, getOrderStatusInfo } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { canPerformAction, ACTIONS } from "@/lib/permissions";
 
 // Statistics Icons
 const RevenueIcon = () => (
@@ -46,6 +48,7 @@ export default function AdminDashboard() {
     });
     const [recentOrders, setRecentOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
     useEffect(() => {
         fetchDashboardData();
@@ -247,20 +250,22 @@ export default function AdminDashboard() {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link
-                    href="/admin/products/new"
-                    className="flex items-center gap-4 p-6 bg-card rounded-xl border border-border hover:border-accent transition-colors"
-                >
-                    <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-                        <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="font-semibold text-foreground">Thêm sản phẩm</p>
-                        <p className="text-sm text-muted">Tạo sản phẩm mới</p>
-                    </div>
-                </Link>
+                {canPerformAction(user?.role?.name || user?.role, ACTIONS.PRODUCT_CREATE) && (
+                    <Link
+                        href="/admin/products/new"
+                        className="flex items-center gap-4 p-6 bg-card rounded-xl border border-border hover:border-accent transition-colors"
+                    >
+                        <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
+                            <svg className="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-foreground">Thêm sản phẩm</p>
+                            <p className="text-sm text-muted">Tạo sản phẩm mới</p>
+                        </div>
+                    </Link>
+                )}
 
                 <Link
                     href="/admin/orders?status=pending"

@@ -326,10 +326,63 @@ const markFailed = async (orderId, reason = 'Payment timeout') => {
     return { success: true };
 };
 
+/**
+ * Confirm COD payment collected
+ * @param {number} orderId - Order ID
+ * @returns {Promise<object>} Updated payment
+ */
+const confirmCOD = async (orderId) => {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { payment: true },
+    });
+
+    if (!order) {
+        throw new ApiError(404, 'Order not found');
+    }
+
+    if (order.paymentMethod !== 'COD') {
+        throw new ApiError(400, 'Not a COD order');
+    }
+
+    // Determine target payment status
+    const targetStatus = 'COD_COLLECTED';
+
+    let payment;
+    if (order.payment) {
+        payment = await prisma.payment.update({
+            where: { id: order.payment.id },
+            data: {
+                status: targetStatus,
+                paidAt: new Date(),
+            },
+        });
+    } else {
+        payment = await prisma.payment.create({
+            data: {
+                orderId: order.id,
+                method: 'COD',
+                amount: order.totalAmount,
+                status: targetStatus,
+                paidAt: new Date(),
+            },
+        });
+    }
+
+    // Update order payment status
+    await prisma.order.update({
+        where: { id: order.id },
+        data: { paymentStatus: targetStatus },
+    });
+
+    return payment;
+};
+
 module.exports = {
     createPayment,
     handleVnpayReturn,
     handleVnpayIpn,
     getByOrderId,
     markFailed,
+    confirmCOD,
 };

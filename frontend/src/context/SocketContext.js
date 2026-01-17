@@ -68,14 +68,51 @@ export function SocketProvider({ children }) {
                     });
                 });
 
+                // Listen for admin order updates
+                socket.on(SOCKET_EVENTS.ADMIN_ORDER_UPDATED, (data) => {
+                    // Filter notifications based on role
+                    const role = user?.role?.name || user?.role;
+                    let shouldNotify = false;
+
+                    if (role === 'ADMIN') {
+                        shouldNotify = true;
+                    } else if (role === 'WAREHOUSE') {
+                        // Warehouse cares about PREPARING status (ready to ship)
+                        if (data.newStatus === 'PREPARING') {
+                            shouldNotify = true;
+                        }
+                    } else if (role === 'SALES_MANAGER') {
+                        // Sales Manager cares about REFUND_REQUESTED
+                        if (data.newStatus === 'REFUND_REQUESTED') {
+                            shouldNotify = true;
+                        }
+                    }
+
+                    if (shouldNotify) {
+                        addNotification({
+                            type: 'admin_order_update',
+                            title: 'Cập nhật đơn hàng',
+                            message: `Đơn hàng #${data.orderNumber}: ${data.oldStatus} -> ${data.newStatus}`,
+                            data,
+                        });
+                    }
+                });
+
                 // Listen for new orders (admin)
                 socket.on(SOCKET_EVENTS.ORDER_CREATED, (data) => {
-                    addNotification({
-                        type: 'new_order',
-                        title: 'Đơn hàng mới',
-                        message: `Đơn hàng mới #${data.orderNumber}`,
-                        data,
-                    });
+                    const role = user?.role?.name || user?.role;
+                    // Warehouse also needs to know about PREPARING if auto-confirmed? 
+                    // Usually new orders are PENDING_PAYMENT or PENDING_CONFIRMATION.
+                    // Admins/Sales always want to know.
+
+                    if (['ADMIN', 'SALES_MANAGER', 'SALES_STAFF'].includes(role)) {
+                        addNotification({
+                            type: 'new_order',
+                            title: 'Đơn hàng mới',
+                            message: `Đơn hàng mới #${data.orderNumber}`,
+                            data,
+                        });
+                    }
                 });
             }
         }
