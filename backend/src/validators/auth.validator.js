@@ -1,8 +1,10 @@
 /**
  * Auth Validation Schemas
  * Validation schemas for authentication endpoints
+ * Schema kiểm tra dữ liệu cho các API xác thực
  */
 
+// Schema đăng ký tài khoản
 const registerSchema = {
     body: {
         email: {
@@ -11,7 +13,7 @@ const registerSchema = {
         },
         password: {
             required: true,
-            type: 'password',
+            type: 'password', // Yêu cầu mật khẩu mạnh
         },
         fullName: {
             required: true,
@@ -21,11 +23,12 @@ const registerSchema = {
         },
         phone: {
             required: false,
-            type: 'phone',
+            type: 'phone', // Định dạng số điện thoại VN
         },
     },
 };
 
+// Schema đăng nhập
 const loginSchema = {
     body: {
         email: {
@@ -40,6 +43,7 @@ const loginSchema = {
     },
 };
 
+// Schema làm mới token
 const refreshSchema = {
     body: {
         refreshToken: {
@@ -49,6 +53,7 @@ const refreshSchema = {
     },
 };
 
+// Schema đổi mật khẩu
 const changePasswordSchema = {
     body: {
         currentPassword: {
@@ -63,6 +68,7 @@ const changePasswordSchema = {
     },
 };
 
+// Schema cập nhật thông tin cá nhân
 const updateProfileSchema = {
     body: {
         fullName: {

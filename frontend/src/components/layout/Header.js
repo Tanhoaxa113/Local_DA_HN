@@ -9,6 +9,7 @@ import CartDrawer from "@/components/cart/CartDrawer";
 import { SHOP_INFO } from "@/lib/constants";
 
 // Icons
+// Icon Tìm kiếm
 const SearchIcon = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -20,6 +21,7 @@ const SearchIcon = () => (
     </svg>
 );
 
+// Icon Người dùng
 const UserIcon = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -31,6 +33,7 @@ const UserIcon = () => (
     </svg>
 );
 
+// Icon Giỏ hàng
 const ShoppingBagIcon = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -42,18 +45,22 @@ const ShoppingBagIcon = () => (
     </svg>
 );
 
+// Icon Menu (Mobile)
 const MenuIcon = () => (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
     </svg>
 );
 
+// Icon Đóng (Mobile)
 const CloseIcon = () => (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
     </svg>
 );
 
+// Navigation Links
+// Danh sách liên kết điều hướng
 const navigation = [
     { name: "Trang chủ", href: "/" },
     { name: "Sản phẩm", href: "/products" },
@@ -68,6 +75,7 @@ export default function Header() {
     const { isAuthenticated, user, logout } = useAuth();
 
     // Hide header on admin pages
+    // Ẩn Header trên trang Admin
     if (pathname?.startsWith("/admin")) return null;
 
     const { cart, toggleCart } = useCart();
@@ -78,6 +86,7 @@ export default function Header() {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
     // Handle scroll for sticky header
+    // Xử lý sự kiện cuộn trang để làm Sticky Header
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 50);
@@ -88,6 +97,7 @@ export default function Header() {
     }, []);
 
     // Close mobile menu on resize
+    // Đóng Menu Mobile khi thay đổi kích thước màn hình
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 1024) {
@@ -99,6 +109,8 @@ export default function Header() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    // Handle search submission
+    // Xử lý tìm kiếm
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchQuery.trim()) {

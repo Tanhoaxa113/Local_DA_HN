@@ -43,16 +43,29 @@ const LockIcon = () => (
     </svg>
 );
 
+/**
+ * Cart Page Component
+ * Trang Giỏ hàng
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách sản phẩm đã thêm
+ * - Cập nhật số lượng, xóa sản phẩm
+ * - Tính toán tổng tiền
+ * - Chuyển hướng đến trang thanh toán
+ */
 export default function CartPage() {
     const { cart, updateItem, removeItem, clearCart, loading } = useCart();
     const { isAuthenticated } = useAuth();
 
     // Calculate totals
+    // Tính toán tổng tiền
     const subtotal = cart.total;
-    const shippingFee = 0;
+    const shippingFee = 0; // Tạm tính bằng 0
     const total = subtotal + shippingFee;
-    const freeShippingRemaining = 0;
+    const freeShippingRemaining = 0; // Logic freeship (nếu có)
 
+    // Empty cart state
+    // Trạng thái giỏ hàng trống
     if (cart.items.length === 0) {
         return (
             <div className="min-h-[calc(100vh-200px)] flex flex-col items-center justify-center py-16 px-4">

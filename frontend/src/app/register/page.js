@@ -25,10 +25,24 @@ const CheckIcon = () => (
     </svg>
 );
 
+/**
+ * Register Page Component
+ * Trang Đăng ký
+ * 
+ * Chức năng: Cho phép người dùng tạo tài khoản mới
+ * Luồng xử lý:
+ * 1. Nhập thông tin (Họ tên, email, phone, password)
+ * 2. Validate dữ liệu
+ * 3. Gọi API register qua AuthContext
+ * 4. Xử lý kết quả:
+ *    - Thành công: Chuyển hướng về trang chủ
+ *    - Thất bại: Hiển thị lỗi
+ */
 export default function RegisterPage() {
     const router = useRouter();
     const { register } = useAuth();
 
+    // Form state
     const [formData, setFormData] = useState({
         fullName: "",
         email: "",
@@ -42,6 +56,10 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
+    /**
+     * Handle input change
+     * Xử lý thay đổi giá trị input
+     */
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData((prev) => ({
@@ -50,40 +68,52 @@ export default function RegisterPage() {
         }));
 
         // Clear error when user types
+        // Xóa lỗi khi người dùng gõ lại
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: "" }));
         }
     };
 
+    /**
+     * Validate form data
+     * Kiểm tra dữ liệu đầu vào
+     * @returns {boolean} Kết quả kiểm tra
+     */
     const validateForm = () => {
         const newErrors = {};
 
+        // Validate Fullname
         if (!formData.fullName.trim()) {
             newErrors.fullName = "Vui lòng nhập họ tên";
         } else if (formData.fullName.length < 2) {
             newErrors.fullName = "Họ tên phải có ít nhất 2 ký tự";
         }
 
+        // Validate Email
         if (!formData.email.trim()) {
             newErrors.email = "Vui lòng nhập email";
         } else if (!isValidEmail(formData.email)) {
             newErrors.email = "Email không hợp lệ";
         }
 
+        // Validate Phone
         if (formData.phone && !isValidPhone(formData.phone)) {
             newErrors.phone = "Số điện thoại không hợp lệ";
         }
 
+        // Validate Password
         if (!formData.password) {
             newErrors.password = "Vui lòng nhập mật khẩu";
         } else if (formData.password.length < 6) {
             newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
         }
 
+        // Validate Confirm Password
         if (formData.password !== formData.confirmPassword) {
             newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
         }
 
+        // Validate Terms
         if (!formData.agreeTerms) {
             newErrors.agreeTerms = "Bạn phải đồng ý với điều khoản sử dụng";
         }
@@ -92,14 +122,22 @@ export default function RegisterPage() {
         return Object.keys(newErrors).length === 0;
     };
 
+    /**
+     * Handle form submission
+     * Xử lý đăng ký tài khoản
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Check validation
+        // Kiểm tra hợp lệ
         if (!validateForm()) return;
 
         setLoading(true);
 
         try {
+            // Call register API
+            // Gọi API đăng ký
             const result = await register({
                 fullName: formData.fullName,
                 email: formData.email,
@@ -108,6 +146,8 @@ export default function RegisterPage() {
             });
 
             if (result.success) {
+                // Redirect on success
+                // Chuyển hướng thành công
                 router.push("/");
             } else {
                 setErrors({ general: result.error || "Đăng ký thất bại. Vui lòng thử lại." });
@@ -119,7 +159,12 @@ export default function RegisterPage() {
         }
     };
 
-    // Password strength indicator
+    /**
+     * Helper to calculate password strength
+     * Hàm tính độ mạnh của mật khẩu
+     * @param {string} password 
+     * @returns {object} { strength: 0-5, label: string, color: string }
+     */
     const getPasswordStrength = (password) => {
         if (!password) return { strength: 0, label: "", color: "" };
 

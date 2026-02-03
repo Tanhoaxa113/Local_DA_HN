@@ -1,6 +1,7 @@
 /**
  * Multer Configuration
  * File upload handling for product images
+ * Cấu hình Multer để upload ảnh
  */
 const multer = require('multer');
 const path = require('path');
@@ -9,12 +10,14 @@ const config = require('./index');
 const ApiError = require('../utils/ApiError');
 
 // Storage configuration
+// Cấu hình nơi lưu trữ file (Disk Storage)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, path.join(__dirname, '..', '..', config.upload.uploadDir));
     },
     filename: (req, file, cb) => {
         // Generate unique filename: uuid-timestamp.extension
+        // Tạo tên file duy nhất: uuid-timestamp.extension
         const ext = path.extname(file.originalname).toLowerCase();
         const filename = `${uuidv4()}-${Date.now()}${ext}`;
         cb(null, filename);
@@ -22,6 +25,7 @@ const storage = multer.diskStorage({
 });
 
 // File filter for images only
+// Bộ lọc file (Chỉ cho phép ảnh)
 const imageFileFilter = (req, file, cb) => {
     if (config.upload.allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
@@ -31,6 +35,7 @@ const imageFileFilter = (req, file, cb) => {
 };
 
 // Single image upload
+// Upload 1 ảnh
 const uploadSingle = multer({
     storage,
     fileFilter: imageFileFilter,
@@ -40,6 +45,7 @@ const uploadSingle = multer({
 }).single('image');
 
 // Multiple images upload (max 10)
+// Upload nhiều ảnh (tối đa 10)
 const uploadMultiple = multer({
     storage,
     fileFilter: imageFileFilter,
@@ -50,6 +56,7 @@ const uploadMultiple = multer({
 }).array('images', 10);
 
 // Upload with multiple fields
+// Upload nhiều trường (thumbnail, images, variantImages)
 const uploadFields = multer({
     storage,
     fileFilter: imageFileFilter,
@@ -65,6 +72,21 @@ const uploadFields = multer({
 
 /**
  * Middleware wrapper to handle multer errors
+ * Wrapper đóng gói middleware của Multer để bắt và xử lý lỗi đồng nhất.
+ * 
+ * Mô tả luồng:
+ * 1. Nhận vào middleware upload gốc của Multer (ví dụ: uploadSingle).
+ * 2. Trả về một middleware mới của Express (req, res, next).
+ * 3. Gọi middleware gốc và lắng nghe callback 'err'.
+ * 4. Nếu có lỗi từ Multer (loại multer.MulterError):
+ *    - LIMIT_FILE_SIZE: Lỗi file quá lớn -> Trả về lỗi 400 kèm thông báo max size.
+ *    - LIMIT_FILE_COUNT: Lỗi quá nhiều file -> Trả về lỗi 400.
+ *    - LIMIT_UNEXPECTED_FILE: Lỗi field name không đúng hoặc dư thừa -> Trả về lỗi 400.
+ * 5. Nếu có lỗi khác (không phải từ Multer) -> Chuyển tiếp cho Global Error Handler (next(err)).
+ * 6. Nếu không có lỗi -> Gọi next() để sang controller tiếp theo.
+ * 
+ * Trigger: Được sử dụng khi định nghĩa route upload file (ví dụ: router.post('/upload', uploadSingle, controller)).
+ * 
  * @param {function} uploadMiddleware - Multer upload middleware
  * @returns {function} Express middleware
  */
@@ -93,6 +115,7 @@ const handleUpload = (uploadMiddleware) => {
 
 /**
  * Get file URL from filename
+ * Lấy URL công khai của file từ tên file
  * @param {string} filename - Uploaded filename
  * @returns {string} Public URL
  */
@@ -102,6 +125,7 @@ const getFileUrl = (filename) => {
 
 /**
  * Delete uploaded file
+ * Xóa file đã upload
  * @param {string} filename - Filename to delete
  * @returns {Promise<void>}
  */

@@ -10,6 +10,15 @@ const CheckIcon = () => (
     </svg>
 );
 
+/**
+ * Checkout Success Page Component
+ * Trang Thông báo đặt hàng thành công
+ * 
+ * Chức năng:
+ * - Hiển thị mã đơn hàng
+ * - Thông báo kết quả đặt hàng/thanh toán
+ * - Hướng dẫn các bước tiếp theo
+ */
 function SuccessContent() {
     const searchParams = useSearchParams();
     const orderNumber = searchParams.get("orderNumber");

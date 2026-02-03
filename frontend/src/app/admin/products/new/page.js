@@ -44,10 +44,21 @@ const defaultVariant = {
     isActive: true,
 };
 
+/**
+ * Admin Create Product Page
+ * Trang Tạo sản phẩm mới (Admin)
+ * 
+ * Chức năng:
+ * - Nhập thông tin sản phẩm mới
+ * - Tạo các biến thể ban đầu
+ * - Upload hình ảnh sản phẩm
+ * - Validate dữ liệu trước khi tạo
+ */
 export default function AdminNewProductPage() {
     const router = useRouter();
     const fileInputRef = useRef(null);
 
+    // Form data state
     const [formData, setFormData] = useState({
         name: "",
         slug: "",
@@ -57,11 +68,17 @@ export default function AdminNewProductPage() {
         isActive: true,
         isFeatured: false,
     });
+
+    // Product details management
     const [variants, setVariants] = useState([{ ...defaultVariant }]);
-    const [images, setImages] = useState([]);
-    const [imageFiles, setImageFiles] = useState([]);
+    const [images, setImages] = useState([]); // Preview images
+    const [imageFiles, setImageFiles] = useState([]); // Actual files to upload
+
+    // Reference data
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
+
+    // UI states
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 

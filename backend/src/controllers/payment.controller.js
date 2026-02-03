@@ -1,6 +1,6 @@
 /**
  * Payment Controller
- * Handles HTTP requests for payment endpoints
+ * Điều khiển các hoạt động liên quan đến thanh toán
  */
 const paymentService = require('../services/payment.service');
 const asyncHandler = require('../utils/asyncHandler');
@@ -8,6 +8,7 @@ const { sendSuccess } = require('../utils/response');
 
 /**
  * Get client IP from request
+ * Lấy địa chỉ IP của client
  * @param {object} req - Express request
  * @returns {string} Client IP
  */
@@ -26,6 +27,15 @@ const getClientIp = (req) => {
 
 /**
  * Create payment for order
+ * Tạo yêu cầu thanh toán (VNPAY)
+ *
+ * Chức năng: Tạo URL thanh toán để redirect người dùng sang cổng thanh toán (VNPAY).
+ * Luồng xử lý:
+ * 1. Nhận `orderId`.
+ * 2. Lấy IP của người dùng.
+ * 3. Gọi `paymentService.createPayment` để sinh URL thanh toán.
+ * 4. Trả về URL.
+ * Kích hoạt khi: Người dùng chọn thanh toán online sau khi tạo đơn hàng.
  * POST /api/payment/create
  */
 const createPayment = asyncHandler(async (req, res) => {
@@ -42,6 +52,14 @@ const createPayment = asyncHandler(async (req, res) => {
 
 /**
  * Handle VNPAY return (redirect from payment page)
+ * Xử lý khi user quay lại từ VNPAY
+ *
+ * Chức năng: Nhận kết quả thanh toán khi người dùng được redirect về từ VNPAY.
+ * Luồng xử lý:
+ * 1. Nhận các tham số từ query param trên URL return.
+ * 2. Gọi logic kiểm tra chữ ký (`handleVnpayReturn`).
+ * 3. Redirect người dùng về trang kết quả trên Frontend (kèm theo trạng thái thành công/thất bại).
+ * Kích hoạt khi: Người dùng thanh toán xong (hoặc hủy) trên VNPAY và được chuyển về website.
  * GET /api/payment/vnpay/return
  */
 const vnpayReturn = asyncHandler(async (req, res) => {
@@ -67,8 +85,16 @@ const vnpayReturn = asyncHandler(async (req, res) => {
 
 /**
  * Handle VNPAY IPN (server-to-server callback)
+ * Xử lý IPN từ VNPAY (Server gọi Server)
+ *
+ * Chức năng: Cập nhật trạng thái đơn hàng ngầm (kể cả khi user tắt trình duyệt).
+ * Luồng xử lý:
+ * 1. Nhận thông tin từ VNPAY gọi sang.
+ * 2. Kiểm tra chữ ký bảo mật.
+ * 3. Cập nhật trạng thái đơn hàng trong DB nếu thanh toán thành công.
+ * 4. Trả về mã phản hồi cho VNPAY (bắt buộc theo tài liệu VNPAY).
+ * Kích hoạt khi: Hệ thống VNPAY notify kết quả thanh toán về server.
  * POST /api/payment/vnpay/ipn
- * Note: This must return specific format for VNPAY
  */
 const vnpayIpn = asyncHandler(async (req, res) => {
     // VNPay may send params as query or body
@@ -82,6 +108,11 @@ const vnpayIpn = asyncHandler(async (req, res) => {
 
 /**
  * Get payment status by order ID
+ * Lấy trạng thái thanh toán
+ *
+ * Chức năng: Kiểm tra xem đơn hàng đã được thanh toán chưa.
+ * Luồng xử lý: Truy vấn bảng Payment theo OrderId.
+ * Kích hoạt khi: Hệ thống cần check lại trạng thái thanh toán.
  * GET /api/payment/order/:orderId
  */
 const getPaymentByOrder = asyncHandler(async (req, res) => {
@@ -94,6 +125,13 @@ const getPaymentByOrder = asyncHandler(async (req, res) => {
 
 /**
  * Confirm COD payment collected
+ * Xác nhận đã thu tiền COD
+ *
+ * Chức năng: Nhân viên xác nhận đã thu tiền mặt của khách (đối với phương thức Thanh toán khi nhận hàng).
+ * Luồng xử lý:
+ * 1. Chỉ nhân viên/admin được gọi.
+ * 2. Cập nhật trạng thái thanh toán của đơn hàng thành "PAID".
+ * Kích hoạt khi: Shipper báo đã giao và thu tiền.
  * PUT /api/payment/confirm-cod
  */
 const confirmCOD = asyncHandler(async (req, res) => {

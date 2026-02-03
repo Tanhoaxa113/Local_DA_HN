@@ -1,6 +1,7 @@
 /**
  * Product Routes
  * Routes for product, variant, and image management
+ * Routes quản lý sản phẩm, biến thể và hình ảnh
  */
 const express = require('express');
 const router = express.Router();
@@ -20,19 +21,24 @@ const {
 
 /**
  * Public routes
+ * Routes công khai
  */
 
 // GET /api/products - List products with filtering
+// Lấy danh sách sản phẩm (có lọc, phân trang)
 router.get('/', optionalAuth, validate(productQuerySchema), productController.getAll);
 
 // GET /api/products/:idOrSlug - Get product by ID or slug
+// Lấy chi tiết sản phẩm theo ID hoặc Slug
 router.get('/:idOrSlug', optionalAuth, productController.getById);
 
 /**
  * Protected routes (Staff only)
+ * Routes nội bộ (Dành cho nhân viên)
  */
 
 // POST /api/products - Create product
+// Tạo sản phẩm mới
 router.post(
     '/',
     authenticate,
@@ -43,6 +49,7 @@ router.post(
 );
 
 // PUT /api/products/:id - Update product
+// Cập nhật thông tin sản phẩm
 router.put(
     '/:id',
     authenticate,
@@ -52,6 +59,7 @@ router.put(
 );
 
 // DELETE /api/products/:id - Delete product
+// Xóa sản phẩm (Yêu cầu quyền Manager)
 router.delete(
     '/:id',
     authenticate,
@@ -61,9 +69,11 @@ router.delete(
 
 /**
  * Variant routes
+ * Routes quản lý biến thể (Size, Color...)
  */
 
 // POST /api/products/:productId/variants - Add variant
+// Thêm biến thể mới
 router.post(
     '/:productId/variants',
     authenticate,
@@ -73,6 +83,7 @@ router.post(
 );
 
 // PUT /api/products/variants/:variantId - Update variant
+// Cập nhật biến thể
 router.put(
     '/variants/:variantId',
     authenticate,
@@ -82,6 +93,7 @@ router.put(
 );
 
 // DELETE /api/products/variants/:variantId - Delete variant
+// Xóa biến thể (Yêu cầu quyền Manager)
 router.delete(
     '/variants/:variantId',
     authenticate,
@@ -91,9 +103,11 @@ router.delete(
 
 /**
  * Image routes
+ * Routes quản lý hình ảnh
  */
 
 // POST /api/products/:productId/images - Add image
+// Thêm ảnh cho sản phẩm
 router.post(
     '/:productId/images',
     authenticate,
@@ -103,6 +117,7 @@ router.post(
 );
 
 // DELETE /api/products/images/:imageId - Delete image
+// Xóa ảnh
 router.delete(
     '/images/:imageId',
     authenticate,

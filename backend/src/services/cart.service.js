@@ -1,14 +1,22 @@
 /**
  * Cart Service
  * Handles shopping cart operations
+ * Xử lý các nghiệp vụ giỏ hàng
  */
 const prisma = require('../config/database');
 const ApiError = require('../utils/ApiError');
 
 /**
  * Get or create cart for user
- * @param {number} userId - User ID
- * @returns {Promise<object>} Cart with items
+ * Lấy hoặc tạo giỏ hàng cho user
+ *
+ * Chức năng: Tìm giỏ hàng hiện tại của user, nếu chưa có thì tạo mới.
+ * Luồng xử lý:
+ * 1. Query DB tìm Cart theo userId.
+ * 2. Include các bảng liên quan: CartItem -> Variant -> Product -> Image.
+ * 3. Nếu không tìm thấy, tạo Cart mới rỗng.
+ * @param {number} userId - ID người dùng.
+ * @returns {Promise<object>} Đối tượng Cart.
  */
 const getOrCreateCart = async (userId) => {
     let cart = await prisma.cart.findUnique({
@@ -51,8 +59,19 @@ const getOrCreateCart = async (userId) => {
 
 /**
  * Get cart with calculated totals
- * @param {number} userId - User ID
- * @returns {Promise<object>} Cart with items and totals
+ * Lấy giỏ hàng chi tiết
+ *
+ * Chức năng: Lấy thông tin giỏ hàng và tính toán tổng tiền tạm tính.
+ * Luồng xử lý:
+ * 1. Gọi `getOrCreateCart`.
+ * 2. Duyệt qua từng item để:
+ *    - Tính thành tiền (price * quantity).
+ *    - Gom thông tin hiển thị (tên, hình ảnh, size, màu).
+ *    - Kiểm tra tính sẵn sàng (có active k, còn hàng k).
+ * 3. Cộng dồn Subtotal và ItemCount.
+ * 4. Trả về cấu trúc dữ liệu chuẩn cho Frontend.
+ * @param {number} userId - ID người dùng.
+ * @returns {Promise<object>} Cart kèm tổng tiền và danh sách item chi tiết.
  */
 const getCart = async (userId) => {
     const cart = await getOrCreateCart(userId);
@@ -100,10 +119,21 @@ const getCart = async (userId) => {
 
 /**
  * Add item to cart
- * @param {number} userId - User ID
- * @param {number} variantId - Product variant ID
- * @param {number} quantity - Quantity to add
- * @returns {Promise<object>} Updated cart
+ * Thêm sản phẩm vào giỏ
+ *
+ * Chức năng: Thêm một sản phẩm (biến thể) vào giỏ hàng.
+ * Luồng xử lý:
+ * 1. Validate Variant: Có tồn tại và còn Active không?
+ * 2. Check Stock: Số lượng còn trong kho có đủ không?
+ * 3. Lấy Cart của user.
+ * 4. Kiểm tra xem Variant này đã có trong Cart chưa:
+ *    - Nếu có: Cộng dồn số lượng.
+ *    - Nếu chưa: Tạo CartItem mới.
+ * 5. Trả về Cart mới nhất.
+ * @param {number} userId - ID người dùng.
+ * @param {number} variantId - ID biến thể sản phẩm.
+ * @param {number} quantity - Số lượng thêm.
+ * @returns {Promise<object>} Cart sau khi update.
  */
 const addItem = async (userId, variantId, quantity = 1) => {
     // Validate variant exists and is active
@@ -163,10 +193,20 @@ const addItem = async (userId, variantId, quantity = 1) => {
 
 /**
  * Update cart item quantity
- * @param {number} userId - User ID
- * @param {number} itemId - Cart item ID
- * @param {number} quantity - New quantity
- * @returns {Promise<object>} Updated cart
+ * Cập nhật số lượng item
+ *
+ * Chức năng: Thay đổi số lượng mua của một sản phẩm trong giỏ.
+ * Luồng xử lý:
+ * 1. Tìm CartItem trong giỏ của user.
+ * 2. Nếu quantity <= 0 -> Xóa item.
+ * 3. Nếu quantity > 0:
+ *    - Check Stock.
+ *    - Update quantity mới.
+ * 4. Trả về Cart mới nhất.
+ * @param {number} userId - ID người dùng.
+ * @param {number} itemId - ID item trong giỏ.
+ * @param {number} quantity - Số lượng mới.
+ * @returns {Promise<object>} Cart sau khi update.
  */
 const updateItem = async (userId, itemId, quantity) => {
     const cart = await getOrCreateCart(userId);
@@ -203,9 +243,12 @@ const updateItem = async (userId, itemId, quantity) => {
 
 /**
  * Remove item from cart
- * @param {number} userId - User ID
- * @param {number} itemId - Cart item ID
- * @returns {Promise<object>} Updated cart
+ * Xóa sản phẩm khỏi giỏ
+ *
+ * Chức năng: Xóa một sản phẩm ra khỏi giỏ hàng.
+ * @param {number} userId - ID người dùng.
+ * @param {number} itemId - ID item trong giỏ.
+ * @returns {Promise<object>} Cart sau khi xóa.
  */
 const removeItem = async (userId, itemId) => {
     const cart = await getOrCreateCart(userId);
@@ -228,8 +271,11 @@ const removeItem = async (userId, itemId) => {
 
 /**
  * Clear all items from cart
- * @param {number} userId - User ID
- * @returns {Promise<object>} Empty cart
+ * Xóa sạch giỏ hàng
+ *
+ * Chức năng: Empty giỏ hàng (thường dùng sau khi đặt hàng thành công).
+ * @param {number} userId - ID người dùng.
+ * @returns {Promise<object>} Cart rỗng.
  */
 const clearCart = async (userId) => {
     const cart = await getOrCreateCart(userId);
@@ -243,9 +289,16 @@ const clearCart = async (userId) => {
 
 /**
  * Validate cart items for checkout
- * Checks stock availability and product status
- * @param {number} userId - User ID
- * @returns {Promise<object>} Validation result
+ * Kiểm tra giỏ hàng trước khi thanh toán
+ *
+ * Chức năng: Đảm bảo mọi sản phẩm trong giỏ đều còn hàng và còn bán.
+ * Luồng xử lý:
+ * 1. Duyệt qua từng item trong giỏ.
+ * 2. Check Active và Stock.
+ * 3. Nếu có lỗi (hết hàng, ngừng bán) -> Đẩy vào mảng `issues`.
+ * 4. Trả về kết quả `valid: true/false` và danh sách lỗi nếu có.
+ * @param {number} userId - ID người dùng.
+ * @returns {Promise<object>} Kết quả validation.
  */
 const validateForCheckout = async (userId) => {
     const cart = await getCart(userId);

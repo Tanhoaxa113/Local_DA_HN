@@ -51,6 +51,16 @@ const paymentStatusConfig = {
     COD_COLLECTED: { label: "Đã thu COD", class: "badge-success" },
 };
 
+/**
+ * Admin Order Detail Page
+ * Trang Chi tiết đơn hàng (Admin)
+ * 
+ * Chức năng:
+ * - Xem chi tiết thông tin đơn hàng
+ * - Cập nhật trạng thái đơn hàng (Xác nhận, Gửi hàng, Hoàn thành...)
+ * - Xác nhận thanh toán COD
+ * - In hóa đơn
+ */
 export default function AdminOrderDetailPage() {
     const router = useRouter();
     const params = useParams();
@@ -58,11 +68,14 @@ export default function AdminOrderDetailPage() {
     const { user } = useAuth();
     const userRole = user?.role?.name || user?.role;
 
+    // State management
     const [order, setOrder] = useState(null);
-    const [nextStatuses, setNextStatuses] = useState([]);
+    const [nextStatuses, setNextStatuses] = useState([]); // Possible next statuses based on current status
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
     const [error, setError] = useState("");
+
+    // Status update modal state
     const [statusNote, setStatusNote] = useState("");
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState(null);

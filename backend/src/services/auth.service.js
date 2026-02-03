@@ -1,6 +1,6 @@
 /**
  * Authentication Service
- * Handles user registration, login, token management, and password operations
+ * Xử lý logic đăng ký, đăng nhập, quản lý token và mật khẩu
  */
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -10,8 +10,12 @@ const ApiError = require('../utils/ApiError');
 
 /**
  * Hash a password using bcrypt
- * @param {string} password - Plain text password
- * @returns {Promise<string>} Hashed password
+ * Mã hóa mật khẩu
+ *
+ * Chức năng: Mã hóa mật khẩu bằng thuật toán bcrypt để lưu vào DB.
+ * Luồng xử lý: Sử dụng thư viện `bcryptjs` với salt rounds = 10.
+ * @param {string} password - Mật khẩu dạng plain text.
+ * @returns {Promise<string>} Mật khẩu đã mã hóa.
  */
 const hashPassword = async (password) => {
     const saltRounds = 10;
@@ -20,9 +24,12 @@ const hashPassword = async (password) => {
 
 /**
  * Compare password with hash
- * @param {string} password - Plain text password
- * @param {string} hash - Hashed password
- * @returns {Promise<boolean>} Match result
+ * So sánh mật khẩu
+ *
+ * Chức năng: Kiểm tra mật khẩu người dùng nhập vào có khớp với mật khẩu đã mã hóa trong DB không.
+ * @param {string} password - Mật khẩu người dùng nhập.
+ * @param {string} hash - Mật khẩu trong DB.
+ * @returns {Promise<boolean>} True nếu khớp, False nếu không.
  */
 const comparePassword = async (password, hash) => {
     return bcrypt.compare(password, hash);
@@ -30,8 +37,11 @@ const comparePassword = async (password, hash) => {
 
 /**
  * Generate access token
- * @param {object} payload - Token payload
- * @returns {string} JWT access token
+ * Tạo Access Token
+ *
+ * Chức năng: Tạo JWT token dùng để xác thực API calls.
+ * @param {object} payload - Thông tin người dùng (userId, email, role).
+ * @returns {string} Chuỗi token JWT.
  */
 const generateAccessToken = (payload) => {
     return jwt.sign(payload, config.jwt.secret, {
@@ -41,8 +51,11 @@ const generateAccessToken = (payload) => {
 
 /**
  * Generate refresh token
- * @param {object} payload - Token payload
- * @returns {string} JWT refresh token
+ * Tạo Refresh Token
+ *
+ * Chức năng: Tạo token dài hạn dùng để cấp lại Access Token khi hết hạn.
+ * @param {object} payload - Thông tin người dùng.
+ * @returns {string} Chuỗi refresh token JWT.
  */
 const generateRefreshToken = (payload) => {
     return jwt.sign(payload, config.jwt.refreshSecret, {
@@ -52,8 +65,11 @@ const generateRefreshToken = (payload) => {
 
 /**
  * Verify access token
- * @param {string} token - JWT token
- * @returns {object} Decoded payload
+ * Xác thực Access Token
+ *
+ * Chức năng: Kiểm tra tính hợp lệ của token gửi lên từ client.
+ * @param {string} token - Chuỗi JWT.
+ * @returns {object} Payload đã giải mã nếu token hợp lệ.
  */
 const verifyAccessToken = (token) => {
     try {
@@ -68,8 +84,11 @@ const verifyAccessToken = (token) => {
 
 /**
  * Verify refresh token
- * @param {string} token - JWT refresh token
- * @returns {object} Decoded payload
+ * Xác thực Refresh Token
+ *
+ * Chức năng: Kiểm tra tính hợp lệ của refresh token.
+ * @param {string} token - Chuỗi JWT refresh token.
+ * @returns {object} Payload đã giải mã.
  */
 const verifyRefreshToken = (token) => {
     try {
@@ -84,8 +103,11 @@ const verifyRefreshToken = (token) => {
 
 /**
  * Calculate token expiry date
- * @param {string} expiresIn - Duration string (e.g., '7d', '30d')
- * @returns {Date} Expiry date
+ * Tính ngày hết hạn token
+ *
+ * Chức năng: Chuyển đổi chuỗi thời gian (vd '7d') thành đối tượng Date.
+ * @param {string} expiresIn - Chuỗi thời gian (vd '7d', '1h').
+ * @returns {Date} Ngày giờ hết hạn cụ thể.
  */
 const calculateExpiryDate = (expiresIn) => {
     const match = expiresIn.match(/^(\d+)([dhms])$/);
@@ -108,8 +130,19 @@ const calculateExpiryDate = (expiresIn) => {
 
 /**
  * Register a new user
- * @param {object} userData - User registration data
- * @returns {Promise<object>} Created user with tokens
+ * Đăng ký người dùng mới
+ *
+ * Chức năng: Tạo tài khoản mới trong cơ sở dữ liệu.
+ * Luồng xử lý:
+ * 1. Kiểm tra email đã tồn tại chưa.
+ * 2. Lấy Role mặc định (CUSTOMER) và Tier mặc định (BRONZE).
+ * 3. Mã hóa mật khẩu.
+ * 4. Tạo bản ghi User mới trong DB.
+ * 5. Tạo cặp Access/Refresh Token.
+ * 6. Lưu Refresh Token vào DB để quản lý phiên.
+ * 7. Trả về thông tin user (đã xóa password) và tokens.
+ * @param {object} userData - Dữ liệu đăng ký (email, password, fullName...).
+ * @returns {Promise<object>} User và Tokens.
  */
 const register = async (userData) => {
     const { email, password, fullName, phone } = userData;
@@ -184,9 +217,19 @@ const register = async (userData) => {
 
 /**
  * Login user
- * @param {string} email - User email
- * @param {string} password - User password
- * @returns {Promise<object>} User with tokens
+ * Đăng nhập
+ *
+ * Chức năng: Xác thực và cấp quyền truy cập.
+ * Luồng xử lý:
+ * 1. Tìm user theo email.
+ * 2. Kiểm tra tài khoản có bị khóa không (`isActive`).
+ * 3. So sánh mật khẩu bằng `comparePassword`.
+ * 4. Cập nhật `lastLoginAt`.
+ * 5. Tạo và lưu tokens mới.
+ * 6. Trả về user và tokens.
+ * @param {string} email - Email đăng nhập.
+ * @param {string} password - Mật khẩu.
+ * @returns {Promise<object>} User và Tokens.
  */
 const login = async (email, password) => {
     // Find user by email
@@ -252,8 +295,17 @@ const login = async (email, password) => {
 
 /**
  * Refresh access token using refresh token
- * @param {string} refreshToken - Refresh token
- * @returns {Promise<object>} New access token
+ * Làm mới Access Token
+ *
+ * Chức năng: Cấp lại access token mới khi cái cũ hết hạn.
+ * Luồng xử lý:
+ * 1. Xác thực refresh token (signature).
+ * 2. Kiểm tra token có tồn tại trong DB không (để tránh token đã bị revoked).
+ * 3. Kiểm tra token có hết hạn chưa (trong DB).
+ * 4. Kiểm tra user có bị khóa không.
+ * 5. Cấp lại access token mới (không cấp lại refresh token ở bước này - tùy chiến lược).
+ * @param {string} refreshToken - Token làm mới.
+ * @returns {Promise<object>} Access token mới.
  */
 const refresh = async (refreshToken) => {
     // Verify refresh token
@@ -301,8 +353,11 @@ const refresh = async (refreshToken) => {
 
 /**
  * Logout user (invalidate refresh token)
- * @param {string} refreshToken - Refresh token to invalidate
- * @returns {Promise<void>}
+ * Đăng xuất
+ *
+ * Chức năng: Hủy hiệu lực phiên đăng nhập hiện tại.
+ * Luồng xử lý: Xóa bản ghi refresh token tương ứng khỏi DB.
+ * @param {string} refreshToken - Token cần hủy.
  */
 const logout = async (refreshToken) => {
     if (!refreshToken) {
@@ -317,8 +372,11 @@ const logout = async (refreshToken) => {
 
 /**
  * Logout from all devices (invalidate all refresh tokens)
- * @param {number} userId - User ID
- * @returns {Promise<void>}
+ * Đăng xuất tất cả thiết bị
+ *
+ * Chức năng: Đăng xuất tài khoản khỏi mọi nơi.
+ * Luồng xử lý: Xóa tất cả refresh token của userId này.
+ * @param {number} userId - ID người dùng.
  */
 const logoutAll = async (userId) => {
     await prisma.refreshToken.deleteMany({
@@ -328,8 +386,11 @@ const logoutAll = async (userId) => {
 
 /**
  * Get current user profile
- * @param {number} userId - User ID
- * @returns {Promise<object>} User profile
+ * Lấy thông tin cá nhân
+ *
+ * Chức năng: Lấy thông tin chi tiết user (kèm role, tier, địa chỉ).
+ * @param {number} userId - ID người dùng.
+ * @returns {Promise<object>} Thông tin user (đã xóa password).
  */
 const getProfile = async (userId) => {
     const user = await prisma.user.findUnique({
@@ -353,9 +414,12 @@ const getProfile = async (userId) => {
 
 /**
  * Update user profile
- * @param {number} userId - User ID
- * @param {object} updateData - Data to update
- * @returns {Promise<object>} Updated user
+ * Cập nhật thông tin cá nhân
+ *
+ * Chức năng: Cho phép user tự sửa tên, số điện thoại, avatar.
+ * @param {number} userId - ID người dùng.
+ * @param {object} updateData - Dữ liệu cần sửa.
+ * @returns {Promise<object>} Thông tin user dã update.
  */
 const updateProfile = async (userId, updateData) => {
     const { fullName, phone, avatar } = updateData;
@@ -379,10 +443,17 @@ const updateProfile = async (userId, updateData) => {
 
 /**
  * Change user password
- * @param {number} userId - User ID
- * @param {string} currentPassword - Current password
- * @param {string} newPassword - New password
- * @returns {Promise<void>}
+ * Đổi mật khẩu
+ *
+ * Chức năng: Đổi mật khẩu đăng nhập.
+ * Luồng xử lý:
+ * 1. Kiểm tra user tồn tại.
+ * 2. Xác thực mật khẩu cũ.
+ * 3. Mã hóa và lưu mật khẩu mới.
+ * 4. (Quan trọng) Đăng xuất khỏi mọi thiết bị khác để đảm bảo an toàn (`logoutAll`).
+ * @param {number} userId - ID người dùng.
+ * @param {string} currentPassword - Mật khẩu hiện tại.
+ * @param {string} newPassword - Mật khẩu mới.
  */
 const changePassword = async (userId, currentPassword, newPassword) => {
     const user = await prisma.user.findUnique({
@@ -414,7 +485,10 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 
 /**
  * Clean up expired refresh tokens
- * @returns {Promise<number>} Number of deleted tokens
+ * Dọn dẹp token hết hạn
+ *
+ * Chức năng: Chạy định kỳ (cron job) để xóa các token rác trong DB.
+ * @returns {Promise<number>} Số lượng token đã xóa.
  */
 const cleanupExpiredTokens = async () => {
     const result = await prisma.refreshToken.deleteMany({

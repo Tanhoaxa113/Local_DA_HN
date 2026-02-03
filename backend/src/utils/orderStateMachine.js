@@ -1,11 +1,13 @@
 /**
  * Order State Machine
  * Defines valid order status transitions and business rules
+ * Máy trạng thái đơn hàng: Định nghĩa các trạng thái và quy tắc chuyển đổi
  */
 const ApiError = require('./ApiError');
 
 /**
  * Order status enum (matches Prisma OrderStatus)
+ * Danh sách trạng thái đơn hàng (Khớp với Prisma Enum)
  */
 const OrderStatus = {
     PENDING_PAYMENT: 'PENDING_PAYMENT',
@@ -28,8 +30,9 @@ const OrderStatus = {
 
 /**
  * Valid state transitions
- * Key: Current status
- * Value: Array of valid next statuses
+ * Key: Current status (Trạng thái hiện tại)
+ * Value: Array of valid next statuses (Các trạng thái tiếp theo hợp lệ)
+ * Logic này ngăn chặn chuyển trạng thái sai quy trình (VD: Từ Chờ thanh toán -> Đã giao hàng ngay lập tức)
  */
 const TRANSITIONS = {
     [OrderStatus.PENDING_PAYMENT]: [
@@ -86,6 +89,7 @@ const TRANSITIONS = {
 
 /**
  * Status labels in Vietnamese
+ * Nhãn hiển thị tiếng Việt
  */
 const STATUS_LABELS = {
     [OrderStatus.PENDING_PAYMENT]: 'Chờ thanh toán',
@@ -108,6 +112,7 @@ const STATUS_LABELS = {
 
 /**
  * Status colors for UI
+ * Màu sắc hiển thị (UI)
  */
 const STATUS_COLORS = {
     [OrderStatus.PENDING_PAYMENT]: 'yellow',
@@ -130,6 +135,7 @@ const STATUS_COLORS = {
 
 /**
  * Roles allowed to set each status
+ * Quyền hạn được phép chuyển sang trạng thái này
  */
 const STATUS_PERMISSIONS = {
     [OrderStatus.PENDING_PAYMENT]: ['SYSTEM'],
@@ -152,6 +158,7 @@ const STATUS_PERMISSIONS = {
 
 /**
  * Check if a status transition is valid
+ * Kiểm tra xem chuyển đổi trạng thái có hợp lệ không
  * @param {string} fromStatus - Current status
  * @param {string} toStatus - Target status
  * @returns {boolean} Whether transition is valid
@@ -163,9 +170,22 @@ const isValidTransition = (fromStatus, toStatus) => {
 
 /**
  * Validate status transition and throw if invalid
- * @param {string} fromStatus - Current status
- * @param {string} toStatus - Target status
- * @param {string} role - User role attempting the transition
+ * Thực hiện kiểm tra logic chuyển đổi trạng thái, nếu không hợp lệ sẽ ném lỗi (Exception).
+ * 
+ * Luồng kiểm tra:
+ * 1. Kiểm tra tính hợp lệ của luồng trạng thái (State Flow):
+ *    - Dựa vào map `TRANSITIONS`.
+ *    - Ví dụ: Không thể chuyển từ 'PENDING_PAYMENT' sang 'DELIVERED'.
+ *    - Nếu sai luồng -> Ném lỗi 400 Bad Request.
+ * 
+ * 2. Kiểm tra quyền hạn (Role Permission) - Nếu có truyền tham số role:
+ *    - Dựa vào map `STATUS_PERMISSIONS`.
+ *    - Ví dụ: 'CUSTOMER' không thể chuyển trạng thái sang 'DELIVERED'.
+ *    - Nếu sai quyền -> Ném lỗi 403 Forbidden.
+ * 
+ * @param {string} fromStatus - Trạng thái hiện tại
+ * @param {string} toStatus - Trạng thái muốn chuyển tới
+ * @param {string} role - Vai trò của người thực hiện (Admin, Customer, etc.)
  */
 const validateTransition = (fromStatus, toStatus, role = null) => {
     if (!isValidTransition(fromStatus, toStatus)) {
@@ -186,6 +206,7 @@ const validateTransition = (fromStatus, toStatus, role = null) => {
 
 /**
  * Get valid next statuses for a given status
+ * Lấy danh sách các trạng thái tiếp theo hợp lệ (để hiển thị nút bấm)
  * @param {string} currentStatus - Current order status
  * @param {string} role - User role (optional, filters by permission)
  * @returns {object[]} Array of valid next statuses with labels
@@ -208,6 +229,7 @@ const getValidNextStatuses = (currentStatus, role = null) => {
 
 /**
  * Check if order is in a terminal state
+ * Kiểm tra xem đơn hàng đã kết thúc chưa (Không thể thay đổi được nữa)
  * @param {string} status - Order status
  * @returns {boolean} Whether status is terminal
  */
@@ -218,6 +240,10 @@ const isTerminalStatus = (status) => {
 
 /**
  * Check if order can be cancelled
+ * Kiểm tra xem đơn hàng có thể hủy không?
+ * Quy tắc: Đơn hàng chỉ có thể hủy khi chưa đi vào quy trình vận chuyển (ví dụ: chưa giao cho shipper).
+ * Các trạng thái được phép hủy thường là: Chờ thanh toán, Chờ xác nhận, Đang chuẩn bị.
+ * 
  * @param {string} status - Order status
  * @returns {boolean} Whether order can be cancelled
  */
@@ -228,6 +254,10 @@ const isCancellable = (status) => {
 
 /**
  * Check if stock should be released for a status
+ * Kiểm tra xem có nên HOÀN lại tồn kho (Release Stock Lock hoặc +Stock) không?
+ * Trigger: Khi đơn hàng bị Hủy (CANCELLED) hoặc Xử lý thanh toán thất bại (PROCESSING_FAILED).
+ * Mục đích: Đảm bảo số lượng hàng tồn được nhả ra để người khác có thể mua.
+ * 
  * @param {string} status - Order status
  * @returns {boolean} Whether stock should be released
  */
@@ -240,6 +270,7 @@ const shouldReleaseStock = (status) => {
 
 /**
  * Check if physical stock should be deducted for a status
+ * Kiểm tra xem có nên trừ tồn kho thực tế không (Khi đang chuẩn bị hàng)
  * @param {string} status - Order status
  * @returns {boolean} Whether physical stock should be deducted
  */
@@ -249,6 +280,7 @@ const shouldConfirmStock = (status) => {
 
 /**
  * Check if stock should be returned to warehouse
+ * Kiểm tra xem có nên nhập lại kho không (Khi hoàn kho)
  * @param {string} status - Order status
  * @returns {boolean} Whether stock should be returned
  */
@@ -258,6 +290,7 @@ const shouldReturnStock = (status) => {
 
 /**
  * Check if loyalty points should be awarded
+ * Kiểm tra xem có nên cộng điểm thưởng không (Khi Hoàn thành)
  * @param {string} status - Order status
  * @returns {boolean} Whether points should be awarded
  */

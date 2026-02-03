@@ -39,10 +39,21 @@ const statusFilters = {
     cancelled: ["CANCELLED", "REFUNDED"],
 };
 
+/**
+ * Admin Orders Management Page
+ * Trang Quản lý đơn hàng (Admin)
+ * 
+ * Chức năng:
+ * - Hiển thị tất cả đơn hàng hệ thống
+ * - Lọc đơn hàng theo trạng thái, tìm kiếm
+ * - Cập nhật trạng thái đơn hàng (Xác nhận, Gửi hàng...)
+ * - Tự động cập nhật real-time qua Socket.io
+ */
 export default function AdminOrdersPage() {
     const { user } = useAuth();
     const userRole = user?.role?.name || user?.role;
 
+    // State management
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -54,11 +65,13 @@ export default function AdminOrdersPage() {
         totalPages: 0,
     });
 
+    // Fetch orders when filters change
     useEffect(() => {
         fetchOrders();
     }, [statusFilter, pagination.page]);
 
     // Real-time subscription for auto-refresh
+    // Đăng ký sự kiện Socket để cập nhật đơn hàng mới/thay đổi trạng thái
     const { subscribe, unsubscribe } = useSocket();
 
     useEffect(() => {

@@ -42,6 +42,17 @@ const tiers = [
     { id: 4, name: "Kim Cương", minPoints: 15000, discountPercent: 10, color: "text-cyan-400" },
 ];
 
+/**
+ * Loyalty Program Page
+ * Trang Khách hàng thân thiết
+ * 
+ * Chức năng:
+ * - Hiển thị điểm tích lũy hiện tại và hạng thành viên
+ * - Hiển thị tiến độ lên hạng tiếp theo
+ * - Danh sách quyền lợi các hạng thành viên
+ * - Hướng dẫn cách tích điểm
+ * - Lịch sử thay đổi điểm (Tích điểm/Tiêu điểm)
+ */
 export default function LoyaltyPage() {
     const { user } = useAuth();
     const [history, setHistory] = useState([]);
@@ -50,6 +61,7 @@ export default function LoyaltyPage() {
     const currentPoints = user?.loyaltyPoints || 0;
 
     // Use tier from API if available, otherwise fallback to local calculation
+    // Tính toán hạng thành viên dựa trên data API hoặc tính toán local nếu cần
     const apiTier = user?.tier;
     const currentTier = apiTier ? {
         id: apiTier.id,

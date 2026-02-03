@@ -52,29 +52,50 @@ const steps = [
     { id: 3, name: "Thanh toán", icon: "3" },
 ];
 
+/**
+ * Checkout Page Component
+ * Trang Thanh toán
+ * 
+ * Chức năng:
+ * - Thu thập thông tin giao hàng
+ * - Chọn phương thức vận chuyển và thanh toán
+ * - Tạo đơn hàng (Order)
+ * - Tích hợp thanh toán online (VNPAY) hoặc COD
+ * 
+ * Quy trình (Steps):
+ * 1. Thông tin (Contact Info)
+ * 2. Giao hàng (Shipping)
+ * 3. Thanh toán (Payment)
+ */
 export default function CheckoutPage() {
     const router = useRouter();
     const { user, isAuthenticated } = useAuth();
     const { cart, clearCart } = useCart();
 
+    // Steps state
+    // Trạng thái các bước (1, 2, 3)
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     // Saved addresses
+    // Danh sách địa chỉ đã lưu
     const [savedAddresses, setSavedAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState(null);
     const [showNewAddressForm, setShowNewAddressForm] = useState(false);
     const [addressLoading, setAddressLoading] = useState(true);
 
     // Tier discount
+    // Giảm giá theo hạng thành viên
     const [tierDiscount, setTierDiscount] = useState(null);
 
     // Location data (for new address form)
+    // Dữ liệu tỉnh/thành, phường/xã
     const [provinces, setProvinces] = useState([]);
     const [wards, setWards] = useState([]);
 
     // Form data
+    // Dữ liệu form thanh toán
     const [formData, setFormData] = useState({
         // Contact info
         email: user?.email || "",

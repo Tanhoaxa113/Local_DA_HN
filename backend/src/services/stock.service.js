@@ -1,6 +1,7 @@
 /**
  * Stock Service
  * Handles stock locking and management with Redis for concurrency control
+ * Quản lý kho hàng và khóa giữ hàng (Distributed Lock với Redis)
  */
 const prisma = require('../config/database');
 const { redis, redisUtils } = require('../config/redis');
@@ -9,11 +10,22 @@ const ApiError = require('../utils/ApiError');
 
 /**
  * Lock stock for order items
- * Uses Redis SETNX for distributed locking and DB transaction for atomic updates
- * @param {object[]} items - Array of { variantId, quantity }
- * @param {number} orderId - Order ID (optional, for tracking)
- * @param {number} ttlMinutes - Lock TTL in minutes
- * @returns {Promise<object>} Lock result with lock keys
+ * Khóa giữ hàng cho đơn
+ *
+ * Chức năng: Giữ hàng tạm thời khi user đặt đơn nhưng chưa thanh toán/hoàn tất.
+ * Luồng xử lý (Concurrency Control):
+ * 1. Duyệt qua từng item:
+ *    - Lấy khóa phân tán từ Redis (`SETNX`) với TTL ngắn hạn.
+ *    - Nếu không lấy được khóa -> Báo lỗi "Hàng đang được xử lý".
+ *    - Kiểm tra `availableStock` trong DB.
+ * 2. Nếu tất cả OK -> Start Transaction DB:
+ *    - Trừ `availableStock`.
+ *    - Tạo record `StockLock` để theo dõi.
+ * 3. Nếu có lỗi -> Rollback (Release Redis Lock).
+ * @param {object[]} items - Danh sách item { variantId, quantity }.
+ * @param {number} orderId - ID đơn hàng (có thể null).
+ * @param {number} ttlMinutes - Thời gian giữ lock.
+ * @returns {Promise<object>} Kết quả lock.
  */
 const lockStock = async (items, orderId = null, ttlMinutes = null) => {
     const lockTtl = (ttlMinutes || config.stockLock.ttlMinutes) * 60; // Convert to seconds
@@ -114,9 +126,15 @@ const lockStock = async (items, orderId = null, ttlMinutes = null) => {
 
 /**
  * Release stock locks (return available stock)
- * Called when order is cancelled or payment times out
- * @param {number} orderId - Order ID
- * @returns {Promise<object>} Release result
+ * Giải phóng hàng giữ
+ *
+ * Chức năng: Trả lại hàng vào kho `Available` (Khi hủy đơn hoặc hết hạn thanh toán).
+ * Luồng xử lý:
+ * 1. Lấy danh sách Lock của Order.
+ * 2. Cộng lại `availableStock` vào biến thể.
+ * 3. Xóa Lock trong DB và Redis.
+ * @param {number} orderId - ID đơn hàng.
+ * @returns {Promise<object>} Kết quả release.
  */
 const releaseStock = async (orderId) => {
     // Get all locks for this order
@@ -159,9 +177,14 @@ const releaseStock = async (orderId) => {
 
 /**
  * Confirm stock (deduct from physical stock when order is being prepared)
- * Called when order status changes to PREPARING
- * @param {number} orderId - Order ID
- * @returns {Promise<object>} Confirmation result
+ * Xác nhận trừ kho vật lý
+ *
+ * Chức năng: Khi đơn hàng được xác nhận và chuyển sang trạng thái chuẩn bị (PREPARING).
+ * Luồng xử lý:
+ * 1. Trừ `stock` (Kho vật lý). `availableStock` đã bị trừ lúc Lock rồi nên ko cần trừ nữa.
+ * 2. Xóa các Lock liên quan (Vì giờ hàng đã chính thức bay màu khỏi kho).
+ * @param {number} orderId - ID đơn hàng.
+ * @returns {Promise<object>} Kết quả confirm.
  */
 const confirmStock = async (orderId) => {
     // Get order items
@@ -217,9 +240,11 @@ const confirmStock = async (orderId) => {
 
 /**
  * Return stock to warehouse (both physical and available)
- * Called when order is returned to warehouse
- * @param {number} orderId - Order ID
- * @returns {Promise<object>} Return result
+ * Hoàn trả hàng vào kho
+ *
+ * Chức năng: Khi khách trả hàng (Return).
+ * @param {number} orderId - ID đơn hàng.
+ * @returns {Promise<object>} Kết quả hoàn trả.
  */
 const returnStock = async (orderId) => {
     // Get order items
@@ -256,8 +281,10 @@ const returnStock = async (orderId) => {
 
 /**
  * Clean up expired stock locks
- * Called by cronjob to release locks for timed-out orders
- * @returns {Promise<object>} Cleanup result
+ * Dọn dẹp Lock hết hạn
+ *
+ * Chức năng: Cronjob chạy định kỳ để giải phóng hàng bị giữ bởi các đơn treo quá lâu.
+ * @returns {Promise<object>} Số lượng lock đã dọn.
  */
 const cleanupExpiredLocks = async () => {
     const expiredLocks = await prisma.stockLock.findMany({
@@ -282,7 +309,10 @@ const cleanupExpiredLocks = async () => {
 
 /**
  * Get low stock variants
- * @returns {Promise<object[]>} Variants with stock <= threshold
+ * Lấy danh sách sắp hết hàng
+ *
+ * Chức năng: Cảnh báo kho.
+ * @returns {Promise<object[]>} Danh sách variant.
  */
 const getLowStockVariants = async () => {
     const variants = await prisma.productVariant.findMany({
@@ -305,10 +335,13 @@ const getLowStockVariants = async () => {
 
 /**
  * Adjust stock manually (for inventory management)
- * @param {number} variantId - Variant ID
- * @param {number} adjustment - Stock adjustment (positive to add, negative to subtract)
- * @param {string} reason - Reason for adjustment
- * @returns {Promise<object>} Updated variant
+ * Cập nhật kho thủ công
+ *
+ * Chức năng: Admin điều chỉnh kho (nhập hàng thêm, kiểm kê...).
+ * @param {number} variantId - ID biến thể.
+ * @param {number} adjustment - Số lượng điều chỉnh (+ hoặc -).
+ * @param {string} reason - Lý do.
+ * @returns {Promise<object>} Variant đã update.
  */
 const adjustStock = async (variantId, adjustment, reason = '') => {
     const variant = await prisma.productVariant.findUnique({

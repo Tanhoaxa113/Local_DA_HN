@@ -1,6 +1,7 @@
 /**
  * Category Routes
  * Routes for category management
+ * Routes quản lý danh mục sản phẩm
  */
 const express = require('express');
 const router = express.Router();
@@ -17,19 +18,24 @@ const {
 
 /**
  * Public routes
+ * Public routes (Không cần đăng nhập)
  */
 
 // GET /api/categories - List categories
+// Lấy danh sách danh mục (cây phân cấp hoặc phẳng)
 router.get('/', optionalAuth, categoryController.getAll);
 
 // GET /api/categories/:idOrSlug - Get category by ID or slug
+// Lấy chi tiết danh mục
 router.get('/:idOrSlug', optionalAuth, categoryController.getById);
 
 /**
  * Protected routes (Staff only)
+ * Routes nội bộ (Dành cho Manager)
  */
 
 // POST /api/categories - Create category
+// Tạo danh mục mới
 router.post(
     '/',
     authenticate,
@@ -40,6 +46,7 @@ router.post(
 );
 
 // PUT /api/categories/:id - Update category
+// Cập nhật danh mục
 router.put(
     '/:id',
     authenticate,
@@ -50,6 +57,7 @@ router.put(
 );
 
 // DELETE /api/categories/:id - Delete category
+// Xóa danh mục (Chỉ Manager)
 router.delete(
     '/:id',
     authenticate,

@@ -55,15 +55,19 @@ export default function ProductCard({ product, variant = "default" }) {
     const [isAdding, setIsAdding] = useState(false);
 
     // Get primary image
+    // Lấy ảnh đại diện chính của sản phẩm
     const primaryImage = product.images?.find((img) => img.isPrimary) || product.images?.[0];
     const secondaryImage = product.images?.find((img) => !img.isPrimary && img !== primaryImage);
 
     const imageUrl = getImageUrl(primaryImage?.url, "/images/placeholder.jpg");
+    // Show secondary image on hover if available
+    // Hiển thị ảnh thứ 2 khi hover nếu có
     const hoverImageUrl = secondaryImage
         ? getImageUrl(secondaryImage.url, imageUrl)
         : imageUrl;
 
     // Get price info from first variant
+    // Lấy thông tin giá từ biến thể đầu tiên
     const firstVariant = product.variants?.[0];
     const price = firstVariant?.price || 0;
     const compareAtPrice = firstVariant?.compareAtPrice;
@@ -73,9 +77,11 @@ export default function ProductCard({ product, variant = "default" }) {
         : 0;
 
     // Check stock
+    // Kiểm tra tồn kho (còn hàng nếu ít nhất 1 biến thể còn > 0)
     const inStock = product.variants?.some((v) => v.availableStock > 0);
 
     // Handle quick add to cart
+    // Xử lý thêm nhanh vào giỏ hàng
     const handleQuickAdd = async (e) => {
         e.preventDefault();
         e.stopPropagation();

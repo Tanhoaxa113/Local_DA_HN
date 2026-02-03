@@ -1,6 +1,6 @@
 /**
  * Loyalty Controller
- * Handles HTTP requests for loyalty endpoints
+ * Điều khiển các request liên quan đến chương trình khách hàng thân thiết (Tích điểm, Hạng thành viên).
  */
 const loyaltyService = require('../services/loyalty.service');
 const asyncHandler = require('../utils/asyncHandler');
@@ -9,6 +9,14 @@ const prisma = require('../config/database');
 
 /**
  * Get loyalty status
+ * Lấy trạng thái thành viên
+ * 
+ * Chức năng: Xem điểm tích lũy hiện tại và hạng thành viên của user.
+ * Luồng xử lý:
+ * 1. Lấy userId từ token.
+ * 2. Gọi `loyaltyService.getStatus`.
+ * 3. Trả về object chứa điểm và hạng.
+ * Kích hoạt khi: Người dùng vào trang "Tài khoản của tôi" hoặc trang "Khách hàng thân thiết".
  * GET /api/loyalty/status
  */
 const getStatus = asyncHandler(async (req, res) => {
@@ -18,6 +26,14 @@ const getStatus = asyncHandler(async (req, res) => {
 
 /**
  * Check discount eligibility
+ * Kiểm tra ưu đãi giảm giá
+ * 
+ * Chức năng: Kiểm tra xem user có được hưởng ưu đãi giảm giá nào dựa trên hạng thành viên không.
+ * Luồng xử lý:
+ * 1. Lấy userId từ token.
+ * 2. Gọi `loyaltyService.checkDiscountEligibility`.
+ * 3. Trả về thông tin discount (nếu có).
+ * Kích hoạt khi: Tính toán giá ở giỏ hàng hoặc Checkout.
  * GET /api/loyalty/discount/check
  */
 const checkDiscount = asyncHandler(async (req, res) => {
@@ -27,6 +43,15 @@ const checkDiscount = asyncHandler(async (req, res) => {
 
 /**
  * Get loyalty points history
+ * Lấy lịch sử tích điểm
+ * 
+ * Chức năng: Xem lịch sử biến động điểm thưởng (tích điểm từ đơn hàng).
+ * Luồng xử lý:
+ * 1. Lấy userId từ token.
+ * 2. Truy vấn bảng `Order` tìm các đơn hàng có `loyaltyPointsEarned > 0`.
+ * 3. Transform dữ liệu thành dạng lịch sử (Ngày, Nội dung, Số điểm).
+ * 4. Trả về danh sách có phân trang.
+ * Kích hoạt khi: User xem tab "Lịch sử tích điểm".
  * GET /api/loyalty/history
  */
 const getHistory = asyncHandler(async (req, res) => {

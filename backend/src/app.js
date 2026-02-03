@@ -1,6 +1,7 @@
 /**
  * Express Application Setup
  * Clothing Shop System - Backend API
+ * Thiết lập ứng dụng Express - Backend API
  */
 require('dotenv').config();
 
@@ -15,19 +16,23 @@ const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middlewares');
 
 // Initialize Express app
+// Khởi tạo ứng dụng Express
 const app = express();
 
 // Trust proxy for production (behind reverse proxy)
+// Cấu hình trust proxy khi chạy sau Reverse Proxy (Nginx, Apache...)
 if (config.app.env === 'production') {
     app.set('trust proxy', 1);
 }
 
 // Security middleware
+// Middleware bảo mật (Helmet)
 app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
 // CORS configuration
+// Cấu hình CORS (Cross-Origin Resource Sharing)
 app.use(cors({
     origin: config.app.env === 'development'
         ? ['http://localhost:3000', 'http://localhost:3001']
@@ -38,6 +43,7 @@ app.use(cors({
 }));
 
 // Request logging
+// Ghi log request (Morgan)
 if (config.app.env === 'development') {
     app.use(morgan('dev'));
 } else {
@@ -45,19 +51,24 @@ if (config.app.env === 'development') {
 }
 
 // Body parsing middleware
+// Middleware xử lý body request (JSON, URL Encoded)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static file serving for uploads
+// Phục vụ file tĩnh (Uploads)
 app.use('/uploads', express.static(path.join(__dirname, '..', config.upload.uploadDir)));
 
 // API Routes
+// Định tuyến API
 app.use('/api', routes);
 
 // 404 handler
+// Xử lý lỗi 404 (Không tìm thấy route)
 app.use(notFoundHandler);
 
 // Global error handler
+// Xử lý lỗi toàn cục
 app.use(errorHandler);
 
 module.exports = app;

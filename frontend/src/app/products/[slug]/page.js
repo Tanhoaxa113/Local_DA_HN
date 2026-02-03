@@ -73,31 +73,51 @@ const ChevronRightIcon = () => (
     </svg>
 );
 
+/**
+ * Product Detail Page
+ * Trang Chi tiết sản phẩm
+ * 
+ * Chức năng:
+ * - Hiển thị thông tin chi tiết (ảnh, tên, giá, mô tả...)
+ * - Chọn phân loại (màu sắc, kích thước)
+ * - Thêm vào giỏ hàng
+ * - Xem sản phẩm liên quan
+ */
 export default function ProductDetailPage() {
     const params = useParams();
     const { addItem } = useCart();
 
+    // Data states
     const [product, setProduct] = useState(null);
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Selection states
+    // Trạng thái lựa chọn phân loại
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedColor, setSelectedColor] = useState(null);
     const [selectedSize, setSelectedSize] = useState(null);
     const [quantity, setQuantity] = useState(1);
+
+    // UI states
     const [isWishlisted, setIsWishlisted] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [activeTab, setActiveTab] = useState("description");
 
     // Fetch product data from API
+    // Lấy dữ liệu sản phẩm khi component mount
     useEffect(() => {
         const fetchProduct = async () => {
             setLoading(true);
             try {
+                // Get product by slug
+                // API lấy sản phẩm theo slug
                 const response = await productsAPI.getBySlug(params.slug);
                 if (response.success && response.data) {
                     setProduct(response.data);
 
                     // Fetch related products
+                    // Lấy sản phẩm liên quan (cùng danh mục)
                     if (response.data.category?.id) {
                         const relatedRes = await productsAPI.getAll({
                             category: response.data.category.slug,
@@ -124,20 +144,24 @@ export default function ProductDetailPage() {
     }, [params.slug]);
 
     // Get unique colors and sizes
+    // Lấy danh sách màu sắc duy nhất từ variants
     const colors = product?.variants
         ? [...new Map(product.variants.map((v) => [v.color, { name: v.color, code: v.colorCode }])).values()]
         : [];
 
+    // Lấy danh sách kích thước tương ứng với màu đã chọn
     const sizes = product?.variants
         ? [...new Set(product.variants.filter((v) => !selectedColor || v.color === selectedColor).map((v) => v.size))]
         : [];
 
     // Get selected variant
+    // Xác định variant đang được chọn
     const selectedVariant = product?.variants?.find(
         (v) => v.color === selectedColor && v.size === selectedSize
     );
 
     // Auto-select first available color
+    // Tự động chọn màu đầu tiên có hàng
     useEffect(() => {
         if (colors.length > 0 && !selectedColor) {
             const firstAvailableColor = colors.find((c) =>
@@ -148,6 +172,7 @@ export default function ProductDetailPage() {
     }, [colors, product]);
 
     // Auto-select first available size when color changes
+    // Tự động chọn size đầu tiên có hàng khi đổi màu
     useEffect(() => {
         if (selectedColor) {
             const availableSizes = product?.variants
@@ -161,10 +186,15 @@ export default function ProductDetailPage() {
         }
     }, [selectedColor, product]);
 
+    /**
+     * Handle Add to Cart
+     * Xử lý thêm vào giỏ hàng
+     */
     const handleAddToCart = async () => {
         if (!selectedVariant) return;
 
         setIsAdding(true);
+        // Call Context action
         await addItem(selectedVariant.id, quantity, {
             ...selectedVariant,
             product: { name: product.name, images: product.images },

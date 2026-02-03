@@ -1,6 +1,7 @@
 /**
  * Validation Middleware
  * Request body/query/params validation using custom schema validation
+ * Middleware kiểm tra dữ liệu đầu vào (Validation)
  */
 const ApiError = require('../utils/ApiError');
 
@@ -25,6 +26,7 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
 
 /**
  * Validate a value against a schema field
+ * Kiểm tra 1 giá trị dựa trên schema định nghĩa
  * @param {any} value - Value to validate
  * @param {object} fieldSchema - Field schema definition
  * @param {string} fieldName - Field name for error messages
@@ -136,6 +138,7 @@ const validateField = (value, fieldSchema, fieldName) => {
 
 /**
  * Create validation middleware from schema
+ * Middleware thực hiện validate request
  * @param {object} schema - Validation schema { body, params, query }
  * @returns {function} Express middleware
  */
@@ -195,6 +198,7 @@ const validate = (schema) => {
 
 /**
  * Sanitize request body by only keeping allowed fields
+ * Loại bỏ các trường thừa không được phép trong body
  * @param {string[]} allowedFields - List of allowed field names
  * @returns {function} Express middleware
  */

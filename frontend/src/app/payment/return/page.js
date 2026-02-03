@@ -24,6 +24,16 @@ const ClockIcon = () => (
     </svg>
 );
 
+/**
+ * Payment Return Page (VNPAY Callback)
+ * Trang Xử lý kết quả trả về từ VNPAY
+ * 
+ * Chức năng:
+ * - Nhận các tham số từ VNPAY redirect về
+ * - Gọi API verifyVNPay để xác thực giao dịch phía backend
+ * - Hiển thị trạng thái loading trong lúc xác thực
+ * - Hiển thị kết quả giao dịch (Thành công/Thất bại) và lý do chi tiết
+ */
 function PaymentReturnContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -35,9 +45,12 @@ function PaymentReturnContent() {
         message: "",
     });
 
+    // Verify payment on mount
+    // Xác thực giao dịch ngay khi trang được load
     useEffect(() => {
         const verifyPayment = async () => {
             // Get all VNPAY params from URL
+            // Lấy tất cả tham số VNPAY trả về từ URL
             const vnpParams = {};
             searchParams.forEach((value, key) => {
                 vnpParams[key] = value;
@@ -53,6 +66,7 @@ function PaymentReturnContent() {
             };
 
             // If we have vnp_ResponseCode, verify with backend
+            // Nếu có mã phản hồi từ VNPAY, tiến hành xác thực với backend
             if (vnpParams.vnp_ResponseCode) {
                 try {
                     const response = await paymentAPI.verifyVNPay(vnpParams);
@@ -65,7 +79,7 @@ function PaymentReturnContent() {
                         });
                     } else {
                         // If API call "failed" (e.g. was a redirect), we fall back to params
-                        // But if it was a redirect (fetch returned HTML), response.success is undefined
+                        // Nếu gọi API thất bại, hiển thị lỗi dựa trên tham số URL
                         setResult({
                             success: vnpParams.vnp_ResponseCode === "00",
                             orderNumber: cleanOrderNumber(vnpParams.vnp_TxnRef),

@@ -19,11 +19,22 @@ const PackageIcon = () => (
     </svg>
 );
 
+/**
+ * User Orders Page
+ * Trang Quản lý đơn hàng cá nhân
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách đơn hàng đã đặt
+ * - Lọc đơn hàng theo trạng thái (Chờ xử lý, Đang giao...)
+ * - Xem chi tiết từng đơn hàng
+ */
 export default function OrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("all");
 
+    // Fetch orders on mount
+    // Lấy danh sách đơn hàng khi vào trang
     useEffect(() => {
         fetchOrders();
     }, []);

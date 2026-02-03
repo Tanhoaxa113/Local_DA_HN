@@ -1,6 +1,7 @@
 /**
  * API Routes
  * Main router that combines all route modules
+ * Router chính, tổng hợp tất cả các modules route khác
  */
 const express = require('express');
 const router = express.Router();
@@ -18,6 +19,7 @@ const adminRoutes = require('./admin.routes');
 const loyaltyRoutes = require('./loyalty.routes');
 
 // Health check endpoint
+// Endpoint kiểm tra sức khỏe server (thường dùng cho Load Balancer hoặc Monitoring)
 router.get('/health', (req, res) => {
     res.json({
         success: true,
@@ -32,6 +34,7 @@ router.get('/health', (req, res) => {
 });
 
 // API version info
+// Thông tin phiên bản API
 router.get('/', (req, res) => {
     res.json({
         success: true,
@@ -56,36 +59,37 @@ router.get('/', (req, res) => {
 
 /**
  * Route Modules
+ * Các module route con
  */
 
-// Authentication routes
+// Authentication routes - Xác thực người dùng (Đăng ký, Đăng nhập...)
 router.use('/auth', authRoutes);
 
-// Product routes
+// Product routes - Quản lý sản phẩm (Danh sách, Chi tiết, CRUD...)
 router.use('/products', productRoutes);
 
-// Category routes
+// Category routes - Quản lý danh mục
 router.use('/categories', categoryRoutes);
 
-// Brand routes
+// Brand routes - Quản lý thương hiệu
 router.use('/brands', brandRoutes);
 
-// Cart routes
+// Cart routes - Quản lý giỏ hàng
 router.use('/cart', cartRoutes);
 
-// Order routes
+// Order routes - Quản lý đơn hàng
 router.use('/orders', orderRoutes);
 
-// Payment routes
+// Payment routes - Thanh toán (VNPAY, COD...)
 router.use('/payment', paymentRoutes);
 
-// Address routes
+// Address routes - Sổ địa chỉ người dùng
 router.use('/addresses', addressRoutes);
 
-// Admin routes
+// Admin routes - Routes dành cho Admin/Manager (Dashboard, Thống kê...)
 router.use('/admin', adminRoutes);
 
-// Loyalty routes
+// Loyalty routes - Điểm thưởng, Hạng thành viên
 router.use('/loyalty', loyaltyRoutes);
 
 // User routes (to be added)

@@ -1,6 +1,6 @@
 /**
  * Product Service
- * Handles product and variant CRUD operations with image management
+ * Xử lý logic sản phẩm, biến thể và quản lý ảnh
  */
 const prisma = require('../config/database');
 const slugify = require('slugify');
@@ -10,9 +10,16 @@ const { redisUtils } = require('../config/redis');
 
 /**
  * Generate unique slug
- * @param {string} name - Product name
- * @param {number|null} excludeId - ID to exclude from uniqueness check
- * @returns {Promise<string>} Unique slug
+ * Tạo slug duy nhất
+ *
+ * Chức năng: Tạo URL thân thiện (slug) từ tên sản phẩm.
+ * Luồng xử lý:
+ * 1. Dùng `slugify` để tạo slug cơ bản.
+ * 2. Kiểm tra trong DB xem slug đã tồn tại chưa.
+ * 3. Nếu trùng, thêm số đếm (-1, -2...) vào sau cho đến khi duy nhất.
+ * @param {string} name - Tên sản phẩm.
+ * @param {number|null} excludeId - ID sản phẩm cần loại trừ (khi update).
+ * @returns {Promise<string>} Slug duy nhất.
  */
 const generateSlug = async (name, excludeId = null) => {
     let slug = slugify(name, { lower: true, strict: true, locale: 'vi' });
@@ -35,10 +42,14 @@ const generateSlug = async (name, excludeId = null) => {
 
 /**
  * Generate SKU for variant
- * @param {string} productSlug - Product slug
- * @param {string} size - Size
- * @param {string} color - Color
- * @returns {string} SKU
+ * Tạo mã SKU
+ *
+ * Chức năng: Tạo mã kho (SKU) tự động cho biến thể.
+ * Luồng xử lý: Kết hợp Slug + Size + Color + Random string.
+ * @param {string} productSlug - Slug sản phẩm.
+ * @param {string} size - Kích thước.
+ * @param {string} color - Màu sắc.
+ * @returns {string} Mã SKU.
  */
 const generateSku = (productSlug, size, color) => {
     const slugPart = productSlug.toUpperCase().substring(0, 10).replace(/-/g, '');
@@ -50,10 +61,19 @@ const generateSku = (productSlug, size, color) => {
 
 /**
  * Create a new product with variants
- * @param {object} data - Product data
- * @param {object[]} variants - Variant data array
- * @param {object[]} images - Image data array
- * @returns {Promise<object>} Created product
+ * Tạo sản phẩm mới
+ *
+ * Chức năng: Thêm sản phẩm cùng biến thể và ảnh vào DB.
+ * Luồng xử lý: dùng Transaction (`prisma.$transaction`) để đảm bảo toàn vẹn dữ liệu.
+ * 1. Validate Category và Brand có tồn tại k.
+ * 2. Tạo Product.
+ * 3. Tạo Variants (nếu có).
+ * 4. Tạo Images (nếu có).
+ * 5. Cập nhật `minPrice` cho Product dựa trên giá nhỏ nhất của variants.
+ * @param {object} data - Dữ liệu sản phẩm.
+ * @param {object[]} variants - Danh sách biến thể.
+ * @param {object[]} images - Danh sách ảnh.
+ * @returns {Promise<object>} Sản phẩm đã tạo.
  */
 const create = async (data, variants = [], images = []) => {
     const { name, description, categoryId, brandId, isFeatured } = data;
@@ -145,8 +165,17 @@ const create = async (data, variants = [], images = []) => {
 
 /**
  * Get all products with filtering and pagination
- * @param {object} options - Query options
- * @returns {Promise<object>} Paginated products
+ * Lấy danh sách sản phẩm (có lọc vè phân trang)
+ *
+ * Chức năng: API search chính của trang web.
+ * Luồng xử lý:
+ * 1. Xây dựng điều kiện lọc (`where` clause) từ params: category, brand, price, size, color, search...
+ * 2. Xây dựng điều kiện sắp xếp (`orderBy`).
+ * 3. Phân trang (`skip`, `take`).
+ * 4. Query DB lấy data và count total.
+ * 5. Trả về kết quả kèm thông tin phân trang.
+ * @param {object} options - Các tham số query.
+ * @returns {Promise<object>} Danh sách sản phẩm và phân trang.
  */
 const getAll = async (options = {}) => {
     const {
@@ -277,8 +306,11 @@ const getAll = async (options = {}) => {
 
 /**
  * Get product by ID or slug
- * @param {number|string} idOrSlug - Product ID or slug
- * @returns {Promise<object>} Product with relations
+ * Lấy chi tiết sản phẩm
+ *
+ * Chức năng: Lấy thông tin đầy đủ của một sản phẩm.
+ * @param {number|string} idOrSlug - ID hoặc Slug.
+ * @returns {Promise<object>} Sản phẩm kèm quan hệ (Variants, Images).
  */
 const getById = async (idOrSlug) => {
     const isId = !isNaN(parseInt(idOrSlug, 10));
@@ -309,9 +341,22 @@ const getById = async (idOrSlug) => {
 
 /**
  * Update product
- * @param {number} id - Product ID
- * @param {object} data - Update data
- * @returns {Promise<object>} Updated product
+ * Cập nhật sản phẩm
+ *
+ * Chức năng: Chỉnh sửa thông tin sản phẩm, xử lý logic ảnh (xóa cũ/thêm mới) và variants.
+ * Luồng xử lý: Dùng Transaction.
+ * 1. Validate dữ liệu đầu vào.
+ * 2. Cập nhật bảng Product.
+ * 3. Xử lý ảnh:
+ *    - Xóa các ảnh có ID trong `deletedImageIds` (xóa DB và file).
+ *    - Thêm ảnh mới từ `newImages`.
+ *    - Update thông tin ảnh cũ (primary, sortOrder).
+ * 4. Xử lý variants (thêm/sửa/xóa).
+ * 5. Tính lại `minPrice`.
+ * 6. Xóa cache Redis.
+ * @param {number} id - ID sản phẩm.
+ * @param {object} data - Dữ liệu cập nhật.
+ * @returns {Promise<object>} Sản phẩm sau update.
  */
 const update = async (id, data) => {
     const {
@@ -500,8 +545,16 @@ const update = async (id, data) => {
 
 /**
  * Delete product
- * @param {number} id - Product ID
- * @returns {Promise<void>}
+ * Xóa sản phẩm
+ *
+ * Chức năng: Xóa hoàn toàn sản phẩm khỏi hệ thống.
+ * Luồng xử lý:
+ * 1. Kiểm tra sản phẩm có tồn tại k.
+ * 2. Kiểm tra ràng buộc: Nếu đã có đơn hàng thì KHÔNG cho xóa (yêu cầu ẩn thay vì xóa để giữ lịch sử).
+ * 3. Nếu được xóa: Xóa hết ảnh trên disk.
+ * 4. Xóa record Product trong DB (Cascade xóa Variants, Images trong DB).
+ * 5. Xóa Cache.
+ * @param {number} id - Product ID.
  */
 const remove = async (id) => {
     const product = await prisma.product.findUnique({
@@ -541,9 +594,16 @@ const remove = async (id) => {
 
 /**
  * Add variant to product
- * @param {number} productId - Product ID
- * @param {object} data - Variant data
- * @returns {Promise<object>} Created variant
+ * Thêm biến thể
+ *
+ * Chức năng: Thêm một biến thể mới cho sản phẩm.
+ * Luồng xử lý:
+ * 1. Validate: Kiểm tra trùng Size + Color.
+ * 2. Tạo Variant mới.
+ * 3. Cập nhật lại `minPrice` của sản phẩm cha.
+ * @param {number} productId - Product ID.
+ * @param {object} data - Dữ liệu variant.
+ * @returns {Promise<object>} Variant mới.
  */
 const addVariant = async (productId, data) => {
     const product = await prisma.product.findUnique({
@@ -601,9 +661,16 @@ const addVariant = async (productId, data) => {
 
 /**
  * Update variant
- * @param {number} variantId - Variant ID
- * @param {object} data - Update data
- * @returns {Promise<object>} Updated variant
+ * Cập nhật biến thể
+ *
+ * Chức năng: Sửa thông tin biến thể.
+ * Luồng xử lý:
+ * 1. Validate trùng lặp nếu sửa Size/Color.
+ * 2. Update DB.
+ * 3. Update `minPrice` sản phẩm cha.
+ * @param {number} variantId - ID biến thể.
+ * @param {object} data - Dữ liệu sửa.
+ * @returns {Promise<object>} Variant đã sửa.
  */
 const updateVariant = async (variantId, data) => {
     const variant = await prisma.productVariant.findUnique({
@@ -661,8 +728,15 @@ const updateVariant = async (variantId, data) => {
 
 /**
  * Delete variant
- * @param {number} variantId - Variant ID
- * @returns {Promise<void>}
+ * Xóa biến thể
+ *
+ * Chức năng: Xóa một biến thể.
+ * Luồng xử lý:
+ * 1. Kiểm tra nếu biến thể đã có đơn hàng -> Không cho xóa.
+ * 2. Xóa khỏi giỏ hàng người dùng (nếu đang nằm trong giỏ).
+ * 3. Xóa record DB.
+ * 4. Cập nhật `minPrice` sản phẩm cha.
+ * @param {number} variantId - ID biến thể.
  */
 const removeVariant = async (variantId) => {
     const variant = await prisma.productVariant.findUnique({
@@ -705,9 +779,12 @@ const removeVariant = async (variantId) => {
 
 /**
  * Add image to product
- * @param {number} productId - Product ID
- * @param {object} data - Image data
- * @returns {Promise<object>} Created image
+ * Thêm ảnh cho sản phẩm
+ *
+ * Chức năng: Thêm record ảnh vào DB.
+ * @param {number} productId - Product ID.
+ * @param {object} data - Dữ liệu ảnh.
+ * @returns {Promise<object>} Image object.
  */
 const addImage = async (productId, data) => {
     const product = await prisma.product.findUnique({
@@ -744,8 +821,10 @@ const addImage = async (productId, data) => {
 
 /**
  * Delete image
- * @param {number} imageId - Image ID
- * @returns {Promise<void>}
+ * Xóa ảnh
+ *
+ * Chức năng: Xóa ảnh khỏi DB và ổ cứng.
+ * @param {number} imageId - Image ID.
  */
 const removeImage = async (imageId) => {
     const image = await prisma.productImage.findUnique({
@@ -765,10 +844,13 @@ const removeImage = async (imageId) => {
 
 /**
  * Update stock for variant
- * @param {number} variantId - Variant ID
- * @param {number} quantity - Quantity to add (negative to subtract)
- * @param {string} type - 'stock' or 'availableStock'
- * @returns {Promise<object>} Updated variant
+ * Cập nhật tồn kho
+ *
+ * Chức năng: Cộng/trừ số lượng tồn kho.
+ * @param {number} variantId - ID biến thể.
+ * @param {number} quantity - Số lượng thay đổi (dương để cộng, âm để trừ).
+ * @param {string} type - 'stock' (tồn thực tế) hoặc 'availableStock' (có thể bán).
+ * @returns {Promise<object>} Variant đã update.
  */
 const updateStock = async (variantId, quantity, type = 'stock') => {
     const variant = await prisma.productVariant.findUnique({

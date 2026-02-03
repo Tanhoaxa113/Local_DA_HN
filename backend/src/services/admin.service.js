@@ -1,13 +1,25 @@
 /**
  * Admin Service
- * Handles analytics, reporting, and dashboard statistics
+ * Xử lý các chức năng quản trị, thống kê và báo cáo
  */
 const prisma = require('../config/database');
 const { OrderStatus } = require('../utils/orderStateMachine');
 
 /**
  * Get dashboard statistics
- * @returns {Promise<object>} Dashboard stats
+ * Lấy thống kê Dashboard
+ *
+ * Chức năng: Tổng hợp các chỉ số quan trọng cho trang chủ Admin.
+ * Luồng xử lý: Chạy song song (`Promise.all`) các query thống kê:
+ * 1. Tổng doanh thu (chỉ tính đơn đã thanh toán).
+ * 2. Doanh thu tháng này.
+ * 3. Doanh thu hôm nay.
+ * 4. Tổng số đơn hàng.
+ * 5. Số đơn hàng chờ xử lý (Pending payment/confirmation/preparing).
+ * 6. Khách hàng mới trong tháng.
+ * 7. Sản phẩm sắp hết hàng (Low stock).
+ * Kích hoạt khi: Admin vào Dashboard.
+ * @returns {Promise<object>} Đối tượng chứa các số liệu thống kê.
  */
 const getDashboardStats = async () => {
     const today = new Date();
@@ -99,8 +111,19 @@ const getDashboardStats = async () => {
 
 /**
  * Get revenue chart data
- * @param {string} period - 'week' | 'month' | 'year'
- * @returns {Promise<object[]>} Report data
+ * Lấy dữ liệu biểu đồ doanh thu
+ *
+ * Chức năng: Trả về dữ liệu để vẽ biểu đồ doanh thu theo thời gian.
+ * Luồng xử lý:
+ * 1. Xác định khoảng thời gian (tuần/tháng/năm) dựa vào tham số `period`.
+ * 2. Query lấy tất cả đơn hàng đã thanh toán trong khoảng đó.
+ * 3. Group dữ liệu bằng JS (do Prisma giới hạn group by date check chéo DB):
+ *    - Tạo map chứa tất cả các ngày/tháng trong range (để biểu đồ không bị đứt đoạn những ngày không có đơn).
+ *    - Cộng dồn doanh thu vào từng ngày/tháng tương ứng.
+ * 4. Chuyển đổi thành mảng object để Frontend dễ vẽ.
+ * Kích hoạt khi: Admin xem biểu đồ doanh thu.
+ * @param {string} period - Khoảng thời gian: 'week' | 'month' | 'year'.
+ * @returns {Promise<object[]>} Mảng dữ liệu báo cáo.
  */
 const getRevenueChart = async (period = 'week') => {
     const now = new Date();
@@ -189,8 +212,17 @@ const getRevenueChart = async (period = 'week') => {
 
 /**
  * Get top selling products
- * @param {number} limit - Limit results
- * @returns {Promise<object[]>} Top products
+ * Lấy top sản phẩm bán chạy
+ *
+ * Chức năng: Thống kê các sản phẩm bán tốt nhất.
+ * Luồng xử lý:
+ * 1. Group table `OrderItem` theo biến thể sản phẩm.
+ * 2. Tính tổng số lượng bán và tổng doanh thu.
+ * 3. Sắp xếp giảm dần theo số lượng.
+ * 4. Lấy `limit` kết quả đầu tiên.
+ * Kích hoạt khi: Admin xem mục "Top sản phẩm".
+ * @param {number} limit - Số lượng kết quả muốn lấy.
+ * @returns {Promise<object[]>} Danh sách sản phẩm top.
  */
 const getTopProducts = async (limit = 5) => {
     // This requires aggregation on OrderItem
@@ -216,8 +248,13 @@ const getTopProducts = async (limit = 5) => {
 
 /**
  * Get recent activity
- * @param {number} limit - Limit results
- * @returns {Promise<object[]>} Recent actions
+ * Lấy hoạt động gần đây
+ *
+ * Chức năng: Liệt kê các đơn hàng mới nhất (có thể mở rộng thêm user mới, review mới...).
+ * Luồng xử lý: Lấy danh sách Order mới nhất, sắp xếp theo `createdAt` giảm dần.
+ * Kích hoạt khi: Widget "Hoạt động gần đây" trên Dashboard.
+ * @param {number} limit - Số dòng muốn lấy.
+ * @returns {Promise<object[]>} Danh sách hoạt động.
  */
 const getRecentActivity = async (limit = 10) => {
     // Combine recent orders and user registrations

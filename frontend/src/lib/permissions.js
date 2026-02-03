@@ -1,9 +1,11 @@
 /**
  * Role-Based Access Control (RBAC) Permissions
  * Centralizes all permission checks for admin panel
+ * Quản lý quyền truy cập Role-Based (RBAC) cho Admin Panel
  */
 
 // Role names from database
+// Các Role định nghĩa trong DB
 export const ROLES = {
     ADMIN: "ADMIN",
     SALES_MANAGER: "SALES_MANAGER",
@@ -13,6 +15,7 @@ export const ROLES = {
 };
 
 // Pages that each role can access
+// Danh sách các trang mà mỗi Role có thể truy cập
 export const PAGE_ACCESS = {
     [ROLES.ADMIN]: [
         "dashboard",
@@ -43,6 +46,7 @@ export const PAGE_ACCESS = {
 };
 
 // Actions that each role can perform
+// Các hành động cụ thể trong hệ thống
 export const ACTIONS = {
     // Product actions
     PRODUCT_CREATE: "product:create",
@@ -79,6 +83,7 @@ export const ACTIONS = {
 };
 
 // Action permissions by role
+// Phân quyền chi tiết cho từng Role (Ai được làm gì)
 export const ACTION_PERMISSIONS = {
     [ROLES.ADMIN]: Object.values(ACTIONS), // All actions
 
@@ -106,6 +111,7 @@ export const ACTION_PERMISSIONS = {
 };
 
 // Order status to action mapping
+// Mapping từ trạng thái đơn hàng sang hành động tương ứng
 export const STATUS_TO_ACTION = {
     PENDING_CONFIRMATION: ACTIONS.ORDER_CONFIRM,
     PREPARING: ACTIONS.ORDER_READY_SHIP,
@@ -118,6 +124,7 @@ export const STATUS_TO_ACTION = {
 
 /**
  * Check if a role can access a specific page
+ * Kiểm tra quyền truy cập trang của Role
  * @param {string} role - User role name
  * @param {string} page - Page identifier (dashboard, products, orders, etc.)
  * @returns {boolean}
@@ -130,6 +137,7 @@ export function hasPageAccess(role, page) {
 
 /**
  * Check if a role can perform a specific action
+ * Kiểm tra quyền thực hiện hành động của Role
  * @param {string} role - User role name
  * @param {string} action - Action identifier from ACTIONS
  * @returns {boolean}
@@ -142,6 +150,7 @@ export function canPerformAction(role, action) {
 
 /**
  * Check if a role can transition order to a specific status
+ * Kiểm tra xem Role có thể chuyển trạng thái đơn hàng không
  * @param {string} role - User role name
  * @param {string} currentStatus - Current order status
  * @param {string} targetStatus - Target order status
@@ -171,6 +180,7 @@ export function canTransitionOrderStatus(role, currentStatus, targetStatus) {
 
 /**
  * Filter status options based on role permissions
+ * Lọc danh sách trạng thái có thể chọn dựa trên Role (Dùng cho Select Box)
  * @param {string} role - User role name
  * @param {Array} statusOptions - Array of {value, label} status options
  * @returns {Array} - Filtered status options
@@ -185,6 +195,7 @@ export function filterStatusOptionsByRole(role, statusOptions) {
 
 /**
  * Get navigation items filtered by role
+ * Lấy danh sách menu điều hướng, lọc theo quyền truy cập trang
  * @param {string} role - User role name
  * @param {Array} navItems - Array of nav items with href
  * @returns {Array} - Filtered nav items
@@ -210,6 +221,7 @@ export function getNavItemsByRole(role, navItems) {
 
 /**
  * Check if role is admin-level (has access to admin panel)
+ * Kiểm tra xem Role có được vào Admin Panel không
  * @param {string} role - User role name
  * @returns {boolean}
  */
@@ -220,6 +232,7 @@ export function isAdminRole(role) {
 
 /**
  * Check if role has read-only access to a page
+ * Kiểm tra xem Role chỉ có quyền xem (Read-only) cho trang nào đó không
  * @param {string} role - User role name
  * @param {string} page - Page identifier
  * @returns {boolean}

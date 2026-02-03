@@ -23,6 +23,15 @@ const ClockIcon = () => (
     </svg>
 );
 
+/**
+ * Payment Result Page
+ * Trang Kết quả thanh toán (Hiển thị kết quả tĩnh)
+ * 
+ * Chức năng:
+ * - Hiển thị thông báo thành công hoặc thất bại dựa trên URL parameters
+ * - Thường được redirect đến từ backend hoặc trang Return sau khi xử lý xong
+ * - Cung cấp các nút điều hướng tiếp theo (Về trang chủ, Đơn hàng, Mua tiếp...)
+ */
 export default function PaymentResultPage() {
     const searchParams = useSearchParams();
     const [result, setResult] = useState({

@@ -6,6 +6,8 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { SocketProvider } from "@/context/SocketContext";
 
+// Font configurations
+// Cấu hình font chữ Inter (cho văn bản thường) và Playfair Display (cho tiêu đề)
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
@@ -18,6 +20,8 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+// Metadata SEO
+// Thông tin SEO cho trang web
 export const metadata = {
   title: {
     default: "Clothing Shop - Thời Trang Cao Cấp",
@@ -42,10 +46,14 @@ export const metadata = {
   },
 };
 
+// Root Layout Component
+// Layout gốc cho toàn bộ ứng dụng
 export default function RootLayout({ children }) {
   return (
     <html lang="vi" className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen flex flex-col antialiased">
+        {/* Providers for Context (Auth, Cart, Socket) */}
+        {/* Các Provider quản lý trạng thái: Auth (Đăng nhập), Cart (Giỏ hàng), Socket (Realtime) */}
         <AuthProvider>
           <CartProvider>
             <SocketProvider>

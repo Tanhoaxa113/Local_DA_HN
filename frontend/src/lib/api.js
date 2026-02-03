@@ -1,15 +1,18 @@
 /**
  * API Configuration
  * Centralized API client for backend communication
+ * Cấu hình API Client tập trung để giao tiếp với Backend
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 /**
  * Custom fetch wrapper with error handling
+ * Hàm fetch wrapper có xử lý lỗi tự động
  * @param {string} endpoint - API endpoint
  * @param {object} options - Fetch options
  * @returns {Promise<object>} API response data
+ * @throws {APIError} Nếu request thất bại
  */
 async function fetchAPI(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -19,6 +22,7 @@ async function fetchAPI(endpoint, options = {}) {
     };
 
     // Add auth token if available
+    // Tự động thêm Token vào Header nếu có
     if (typeof window !== "undefined") {
         const token = localStorage.getItem("accessToken");
         if (token) {
@@ -38,6 +42,7 @@ async function fetchAPI(endpoint, options = {}) {
         const response = await fetch(url, config);
 
         // Handle non-JSON responses
+        // Xử lý response không phải JSON
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
             if (!response.ok) {
@@ -69,6 +74,7 @@ async function fetchAPI(endpoint, options = {}) {
 
 /**
  * Custom API Error class
+ * Class lỗi tùy chỉnh cho API
  */
 class APIError extends Error {
     constructor(message, status, data = null) {
@@ -81,6 +87,7 @@ class APIError extends Error {
 
 /**
  * Auth API
+ * Các API liên quan đến xác thực (Đăng nhập, Đăng ký...)
  */
 export const authAPI = {
     login: (credentials) =>
@@ -117,8 +124,10 @@ export const authAPI = {
 
 /**
  * Products API
+ * Các API liên quan đến sản phẩm
  */
 export const productsAPI = {
+    // Lấy danh sách sản phẩm (có lọc)
     getAll: (params = {}) => {
         const searchParams = new URLSearchParams();
         Object.entries(params).forEach(([key, value]) => {
@@ -130,18 +139,23 @@ export const productsAPI = {
         return fetchAPI(`/products${query ? `?${query}` : ""}`);
     },
 
+    // Lấy chi tiết sản phẩm theo Slug
     getBySlug: (slug) => fetchAPI(`/products/${slug}`),
 
+    // Lấy sản phẩm nổi bật
     getFeatured: () => fetchAPI("/products?isFeatured=true&limit=8"),
 
+    // Lấy sản phẩm theo danh mục
     getByCategory: (categorySlug, params = {}) => {
         const searchParams = new URLSearchParams({ category: categorySlug, ...params });
         return fetchAPI(`/products?${searchParams.toString()}`);
     },
 
     // Admin operations
+    // Các thao tác của Admin với sản phẩm
     getById: (id) => fetchAPI(`/admin/products/${id}`),
 
+    // Tạo sản phẩm mới (có upload ảnh)
     create: (formData) =>
         fetch(`${API_BASE_URL}/admin/products`, {
             method: "POST",
@@ -151,6 +165,7 @@ export const productsAPI = {
             body: formData,
         }).then(res => res.json()),
 
+    // Cập nhật sản phẩm
     update: (id, formData) =>
         fetch(`${API_BASE_URL}/admin/products/${id}`, {
             method: "PUT",
@@ -160,6 +175,7 @@ export const productsAPI = {
             body: formData,
         }).then(res => res.json()),
 
+    // Xóa sản phẩm
     delete: (id) =>
         fetchAPI(`/admin/products/${id}`, {
             method: "DELETE",
@@ -168,6 +184,7 @@ export const productsAPI = {
 
 /**
  * Categories API
+ * Các API liên quan đến danh mục
  */
 export const categoriesAPI = {
     getAll: () => fetchAPI("/categories"),
@@ -190,6 +207,7 @@ export const categoriesAPI = {
 
 /**
  * Brands API
+ * Các API liên quan đến thương hiệu
  */
 export const brandsAPI = {
     getAll: () => fetchAPI("/brands"),
@@ -212,6 +230,7 @@ export const brandsAPI = {
 
 /**
  * Cart API
+ * Các API liên quan đến giỏ hàng
  */
 export const cartAPI = {
     get: () => fetchAPI("/cart"),
@@ -241,6 +260,7 @@ export const cartAPI = {
 
 /**
  * Orders API
+ * Các API liên quan đến đơn hàng
  */
 export const ordersAPI = {
     create: (orderData) =>
@@ -250,12 +270,14 @@ export const ordersAPI = {
         }),
 
     // For customers - get their own orders
+    // Lấy danh sách đơn hàng của user hiện tại
     getMyOrders: (params = {}) => {
         const searchParams = new URLSearchParams(params);
         return fetchAPI(`/orders/my?${searchParams.toString()}`);
     },
 
     // For admin - get all orders (requires staff role)
+    // Admin lấy toàn bộ đơn hàng
     getAll: (params = {}) => {
         const searchParams = new URLSearchParams(params);
         return fetchAPI(`/orders?${searchParams.toString()}`);
@@ -292,6 +314,7 @@ export const ordersAPI = {
 
 /**
  * Payment API
+ * Các API liên quan đến thanh toán
  */
 export const paymentAPI = {
     createVNPayUrl: (orderId) =>
@@ -314,6 +337,7 @@ export const paymentAPI = {
 
 /**
  * Address API
+ * Các API quản lý địa chỉ giao hàng
  */
 export const addressAPI = {
     getAll: () => fetchAPI("/addresses"),
@@ -343,9 +367,7 @@ export const addressAPI = {
 
 /**
  * Location API
- */
-/**
- * Location API
+ * API lấy thông tin Tỉnh/Thành, Quận/Huyện (API bên thứ 3)
  * Using external API: https://provinces.open-api.vn/
  */
 export const locationAPI = {
@@ -359,6 +381,7 @@ export const locationAPI = {
 
 /**
  * Loyalty API
+ * Các API liên quan đến khách hàng thân thiết
  */
 export const loyaltyAPI = {
     getStatus: () => fetchAPI("/loyalty/status"),
@@ -370,6 +393,7 @@ export const loyaltyAPI = {
 
 /**
  * Users API (Admin)
+ * API quản lý người dùng (Dành cho Admin)
  */
 export const usersAPI = {
     getAll: (params = {}) => {

@@ -1,6 +1,7 @@
 /**
  * Socket.io Client Configuration
  * Handles real-time communication with backend
+ * Cấu hình Socket.io Client để giao tiếp thời gian thực với Backend
  */
 import { io } from 'socket.io-client';
 
@@ -10,6 +11,7 @@ let socket = null;
 
 /**
  * Initialize socket connection with authentication
+ * Khởi tạo kết nối Socket với xác thực
  * @param {string} token - JWT access token
  * @returns {object} Socket instance
  */
@@ -18,6 +20,7 @@ export const initSocket = (token) => {
         return socket;
     }
 
+    // Kết nối đến Socket Server với Token xác thực
     socket = io(SOCKET_URL, {
         auth: { token },
         transports: ['websocket', 'polling'],
@@ -45,12 +48,14 @@ export const initSocket = (token) => {
 
 /**
  * Get current socket instance
+ * Lấy instance hiện tại của Socket
  * @returns {object|null} Socket instance or null
  */
 export const getSocket = () => socket;
 
 /**
  * Disconnect socket
+ * Ngắt kết nối Socket
  */
 export const disconnectSocket = () => {
     if (socket) {
@@ -61,6 +66,7 @@ export const disconnectSocket = () => {
 
 /**
  * Subscribe to an event
+ * Đăng ký lắng nghe sự kiện
  * @param {string} event - Event name
  * @param {function} callback - Event handler
  */
@@ -72,6 +78,7 @@ export const subscribeToEvent = (event, callback) => {
 
 /**
  * Unsubscribe from an event
+ * Hủy đăng ký lắng nghe sự kiện
  * @param {string} event - Event name
  * @param {function} callback - Event handler (optional)
  */

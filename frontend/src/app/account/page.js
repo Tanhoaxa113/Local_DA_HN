@@ -4,14 +4,30 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { isValidEmail, isValidPhone } from "@/lib/utils";
 
+/**
+ * Account Page Component
+ * Trang Quản lý tài khoản
+ * 
+ * Chức năng: Xem và cập nhật thông tin cá nhân của người dùng
+ * Luồng xử lý:
+ * 1. Lấy thông tin user từ AuthContext
+ * 2. Hiển thị thông tin (Read-only mode)
+ * 3. Chế độ chỉnh sửa (Edit mode):
+ *    - Cho phép sửa tên, email, sđt
+ *    - Validate dữ liệu
+ *    - Gọi API updateProfile
+ */
 export default function AccountPage() {
     const { user, updateProfile } = useAuth();
 
+    // UI States
+    // Trạng thái giao diện
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState("");
     const [error, setError] = useState("");
 
+    // Form Data
     const [formData, setFormData] = useState({
         fullName: user?.fullName || "",
         email: user?.email || "",
@@ -20,6 +36,10 @@ export default function AccountPage() {
 
     const [formErrors, setFormErrors] = useState({});
 
+    /**
+     * Handle input change
+     * Xử lý thay đổi input
+     */
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -28,6 +48,11 @@ export default function AccountPage() {
         }
     };
 
+    /**
+     * Validate profile form
+     * Kiểm tra dữ liệu cập nhật
+     * @returns {boolean} True nếu hợp lệ
+     */
     const validateForm = () => {
         const errors = {};
 
@@ -49,6 +74,10 @@ export default function AccountPage() {
         return Object.keys(errors).length === 0;
     };
 
+    /**
+     * Handle profile update submission
+     * Xử lý lưu thay đổi
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
@@ -58,6 +87,8 @@ export default function AccountPage() {
         setSuccess("");
 
         try {
+            // Call update profile API
+            // Gọi API cập nhật thông tin
             const result = await updateProfile(formData);
 
             if (result.success) {

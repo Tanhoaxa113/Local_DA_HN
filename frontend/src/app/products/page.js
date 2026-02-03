@@ -54,17 +54,33 @@ const priceRanges = [
     { min: 2000000, max: null, label: "Trên 2 Triệu" },
 ];
 
+/**
+ * Products Listing Page
+ * Trang Danh sách sản phẩm
+ * 
+ * Chức năng: 
+ * - Hiển thị danh sách sản phẩm dạng lưới hoặc list
+ * - Lọc sản phẩm theo (Danh mục, Thương hiệu, Giá, ...)
+ * - Tìm kiếm và sắp xếp
+ * - Phân trang
+ */
 export default function ProductsPage() {
     const searchParams = useSearchParams();
 
+    // Data states
+    // Trạng thái dữ liệu
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // UI states
+    // Trạng thái giao diện
     const [viewMode, setViewMode] = useState("grid");
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Filter states
+    // Bộ lọc hiện tại
     const [filters, setFilters] = useState({
         category: searchParams.get("category") || "",
         brand: searchParams.get("brand") || "",
@@ -76,6 +92,8 @@ export default function ProductsPage() {
         inStock: searchParams.get("inStock") === "true",
     });
 
+    // Pagination state
+    // Trạng thái phân trang
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 12,

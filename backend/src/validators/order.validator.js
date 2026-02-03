@@ -1,8 +1,10 @@
 /**
  * Order Validation Schemas
  * Validation schemas for order and cart endpoints
+ * Schema kiểm tra dữ liệu cho đơn hàng và giỏ hàng
  */
 
+// Schema thêm vào giỏ hàng
 const addToCartSchema = {
     body: {
         variantId: {
@@ -19,6 +21,7 @@ const addToCartSchema = {
     },
 };
 
+// Schema cập nhật số lượng trong giỏ hàng
 const updateCartItemSchema = {
     params: {
         itemId: {
@@ -36,6 +39,7 @@ const updateCartItemSchema = {
     },
 };
 
+// Schema tạo đơn hàng
 const createOrderSchema = {
     body: {
         addressId: {
@@ -61,6 +65,7 @@ const createOrderSchema = {
     },
 };
 
+// Schema cập nhật trạng thái đơn hàng (Admin/Staff)
 const updateOrderStatusSchema = {
     params: {
         id: {
@@ -99,6 +104,7 @@ const updateOrderStatusSchema = {
     },
 };
 
+// Schema hủy đơn hàng (Khách hàng)
 const cancelOrderSchema = {
     params: {
         id: {
@@ -115,6 +121,7 @@ const cancelOrderSchema = {
     },
 };
 
+// Schema yêu cầu hoàn tiền
 const refundRequestSchema = {
     params: {
         id: {
@@ -132,6 +139,7 @@ const refundRequestSchema = {
     },
 };
 
+// Schema lọc danh sách đơn hàng
 const orderQuerySchema = {
     query: {
         page: {

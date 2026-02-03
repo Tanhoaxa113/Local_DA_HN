@@ -1,8 +1,10 @@
 /**
  * Product Validation Schemas
  * Validation schemas for product, category, and brand endpoints
+ * Schema kiểm tra dữ liệu cho sản phẩm, danh mục, thương hiệu
  */
 
+// Schema tạo sản phẩm mới
 const createProductSchema = {
     body: {
         name: {
@@ -33,6 +35,7 @@ const createProductSchema = {
     },
 };
 
+// Schema cập nhật sản phẩm
 const updateProductSchema = {
     params: {
         id: {
@@ -73,6 +76,7 @@ const updateProductSchema = {
     },
 };
 
+// Schema tạo biến thể sản phẩm (Size/Color)
 const createVariantSchema = {
     params: {
         productId: {
@@ -126,6 +130,7 @@ const createVariantSchema = {
     },
 };
 
+// Schema cập nhật biến thể
 const updateVariantSchema = {
     params: {
         variantId: {
@@ -178,6 +183,7 @@ const updateVariantSchema = {
     },
 };
 
+// Schema tạo danh mục
 const createCategorySchema = {
     body: {
         name: {
@@ -204,6 +210,7 @@ const createCategorySchema = {
     },
 };
 
+// Schema cập nhật danh mục
 const updateCategorySchema = {
     params: {
         id: {
@@ -240,6 +247,7 @@ const updateCategorySchema = {
     },
 };
 
+// Schema tạo thương hiệu
 const createBrandSchema = {
     body: {
         name: {
@@ -256,6 +264,7 @@ const createBrandSchema = {
     },
 };
 
+// Schema cập nhật thương hiệu
 const updateBrandSchema = {
     params: {
         id: {
@@ -282,6 +291,7 @@ const updateBrandSchema = {
     },
 };
 
+// Schema lọc sản phẩm (tìm kiếm)
 const productQuerySchema = {
     query: {
         page: {

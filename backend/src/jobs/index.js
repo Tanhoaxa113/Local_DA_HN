@@ -1,6 +1,7 @@
 /**
  * Jobs Index
  * Centralized job management and initialization
+ * Quản lý tập trung các Job chạy ngầm
  */
 const orderTimeoutJob = require('./orderTimeout.job');
 const orderCompleteJob = require('./orderComplete.job');
@@ -8,6 +9,7 @@ const refundAutoConfirmJob = require('./refundAutoConfirm.job');
 
 /**
  * Start all scheduled jobs
+ * Khởi động tất cả các Job
  */
 const startAll = () => {
     console.log('\n🕐 Starting scheduled jobs...');
@@ -21,6 +23,7 @@ const startAll = () => {
 
 /**
  * Run jobs manually (for testing)
+ * Chạy Job thủ công (dùng cho Testing hoặc Debug)
  */
 const runManually = async (jobName) => {
     switch (jobName) {

@@ -2,6 +2,7 @@
  * VNPAY Service
  * Handles VNPAY payment gateway integration
  * Reference: https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html
+ * Tích hợp cổng thanh toán VNPAY
  */
 const crypto = require('crypto');
 const querystring = require('querystring');
@@ -10,8 +11,11 @@ const ApiError = require('../utils/ApiError');
 
 /**
  * Sort object by keys alphabetically
- * @param {object} obj - Object to sort
- * @returns {object} Sorted object
+ * Sắp xếp object theo key
+ *
+ * Chức năng: VNPAY yêu cầu các tham số phải được sắp xếp theo bảng chữ cái trước khi tạo chữ ký.
+ * @param {object} obj - Object cần submit.
+ * @returns {object} Object đã sắp xếp.
  */
 const sortObject = (obj) => {
     const sorted = {};
@@ -28,8 +32,9 @@ const sortObject = (obj) => {
 
 /**
  * Format date to VNPay format (yyyyMMddHHmmss) in GMT+7
- * @param {Date} date - Date to format
- * @returns {string} Formatted date string
+ * Format ngày giờ theo chuẩn VNPAY
+ * @param {Date} date - Ngày giờ.
+ * @returns {string} Chuỗi format (VD: 20231025143000).
  */
 const formatDate = (date) => {
     // Ensure we use GMT+7 (Asia/Ho_Chi_Minh)
@@ -59,9 +64,10 @@ const formatDate = (date) => {
 
 /**
  * Create HMAC SHA512 signature
- * @param {string} data - Data to sign
- * @param {string} secret - Secret key
- * @returns {string} Signature
+ * Tạo chữ ký bảo mật
+ * @param {string} data - Chuỗi dữ liệu.
+ * @param {string} secret - Khóa bí mật (Hash Secret).
+ * @returns {string} Chữ ký (Checksum).
  */
 const createSignature = (data, secret) => {
     return crypto
@@ -73,9 +79,18 @@ const createSignature = (data, secret) => {
 
 /**
  * Create VNPAY payment URL
- * @param {object} orderInfo - Order information
- * @param {string} clientIp - Client IP address
- * @returns {string} Payment URL
+ * Tạo URL thanh toán
+ *
+ * Chức năng: Tạo URL để redirect user sang trang thanh toán của VNPAY.
+ * Luồng xử lý:
+ * 1. Lấy thông tin đơn hàng, IP.
+ * 2. Tạo các tham số chuẩn (`vnp_Version`, `vnp_Command`, `vnp_Amount`...).
+ * 3. Sắp xếp tham số.
+ * 4. Tạo chữ ký bảo mật (Secure Hash).
+ * 5. Ghép thành URL hoàn chỉnh.
+ * @param {object} orderInfo - Thông tin đơn (số tiền, mã đơn...).
+ * @param {string} clientIp - IP khách hàng.
+ * @returns {string} URL thanh toán.
  */
 const createPaymentUrl = (orderInfo, clientIp) => {
     const { orderNumber, amount, orderDescription, bankCode, language = 'vn' } = orderInfo;
@@ -143,8 +158,16 @@ const createPaymentUrl = (orderInfo, clientIp) => {
 
 /**
  * Verify VNPAY return/IPN signature
- * @param {object} vnpParams - VNPay callback parameters
- * @returns {boolean} Whether signature is valid
+ * Kiểm tra chữ ký trả về
+ *
+ * Chức năng: Xác thực dữ liệu trả về từ VNPAY có đúng là từ họ gửi không (chống giả mạo).
+ * Luồng xử lý:
+ * 1. Lấy `vnp_SecureHash` từ dữ liệu trả về.
+ * 2. Xóa `vnp_SecureHash` khỏi params.
+ * 3. Sắp xếp params còn lại và hash lại theo key bí mật.
+ * 4. So sánh hash mới tạo với `vnp_SecureHash`.
+ * @param {object} vnpParams - Tham số VNPAY trả về.
+ * @returns {boolean} True nếu chữ ký đúng.
  */
 const verifySignature = (vnpParams) => {
     const secureHash = vnpParams.vnp_SecureHash;
@@ -170,8 +193,9 @@ const verifySignature = (vnpParams) => {
 
 /**
  * Parse VNPay response
- * @param {object} vnpParams - VNPay callback parameters
- * @returns {object} Parsed response
+ * Phân tích dữ liệu trả về
+ * @param {object} vnpParams - Dữ liệu thô.
+ * @returns {object} Dữ liệu đã chuẩn hóa (Amount / 100, lấy OrderNumber gốc...).
  */
 const parseResponse = (vnpParams) => {
     // Strip suffix from orderNumber (TxnRef)
@@ -195,6 +219,7 @@ const parseResponse = (vnpParams) => {
 
 /**
  * VNPay response codes
+ * Mã lỗi trả về từ VNPAY
  */
 const RESPONSE_CODES = {
     '00': 'Giao dịch thành công',
@@ -214,8 +239,9 @@ const RESPONSE_CODES = {
 
 /**
  * Check if payment is successful
- * @param {string} responseCode - VNPay response code
- * @returns {boolean} Whether payment is successful
+ * Kiểm tra giao dịch thành công
+ * @param {string} responseCode - Mã trả về.
+ * @returns {boolean} True nếu thành công (00).
  */
 const isPaymentSuccessful = (responseCode) => {
     return responseCode === '00';
@@ -223,8 +249,9 @@ const isPaymentSuccessful = (responseCode) => {
 
 /**
  * Get response message
- * @param {string} responseCode - VNPay response code
- * @returns {string} Response message
+ * Lấy thông báo lỗi tiếng Việt
+ * @param {string} responseCode - Mã trả về.
+ * @returns {string} Thông báo lỗi.
  */
 const getResponseMessage = (responseCode) => {
     return RESPONSE_CODES[responseCode] || 'Lỗi không xác định';
@@ -232,9 +259,12 @@ const getResponseMessage = (responseCode) => {
 
 /**
  * Query transaction status
- * @param {string} orderNumber - Order number
- * @param {string} transactionDate - Transaction date (yyyyMMddHHmmss)
- * @returns {Promise<object>} Transaction status
+ * Truy vấn trạng thái giao dịch (Query DR)
+ *
+ * Chức năng: Kiểm tra trạng thái đơn bên VNPAY (dùng khi không nhận được IPN).
+ * @param {string} orderNumber - Mã đơn hàng.
+ * @param {string} transactionDate - Ngày giao dịch.
+ * @returns {Promise<object>} Trạng thái.
  */
 const queryTransaction = async (orderNumber, transactionDate) => {
     // This would make an API call to VNPay's query endpoint
@@ -244,8 +274,11 @@ const queryTransaction = async (orderNumber, transactionDate) => {
 
 /**
  * Request refund
- * @param {object} refundInfo - Refund information
- * @returns {Promise<object>} Refund result
+ * Yêu cầu hoàn tiền
+ *
+ * Chức năng: Hoàn tiền một phần hoặc toàn phần cho giao dịch VNPAY.
+ * @param {object} refundInfo - Thông tin hoàn tiền.
+ * @returns {Promise<object>} Kết quả hoàn tiền.
  */
 const requestRefund = async (refundInfo) => {
     // This would make an API call to VNPay's refund endpoint

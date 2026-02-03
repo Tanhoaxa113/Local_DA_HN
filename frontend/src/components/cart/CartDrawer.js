@@ -38,6 +38,8 @@ const ShoppingBagIcon = () => (
 export default function CartDrawer() {
     const { cart, isCartOpen, closeCart, updateItem, removeItem, loading } = useCart();
 
+    // If cart is closed, do not render
+    // Nếu giỏ hàng đang đóng, không cần Render
     if (!isCartOpen) return null;
 
     return (
@@ -139,6 +141,7 @@ export default function CartDrawer() {
 function CartItem({ item, onUpdateQuantity, onRemove, loading }) {
     const variant = item.variant;
     // Handle both API response formats (mapped vs raw)
+    // Xử lý cả 2 định dạng phản hồi API (đã map hoặc thô)
     const product = item.product || variant?.product;
 
     const imageUrl = getImageUrl(

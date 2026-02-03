@@ -1,6 +1,7 @@
 /**
  * Payment Service
  * Handles payment operations and integrates with payment gateways
+ * Xử lý thanh toán và tích hợp cổng thanh toán (VNPAY)
  */
 const prisma = require('../config/database');
 const config = require('../config');
@@ -11,9 +12,18 @@ const { OrderStatus } = require('../utils/orderStateMachine');
 
 /**
  * Create payment for order
- * @param {number} orderId - Order ID
- * @param {string} clientIp - Client IP address
- * @returns {Promise<object>} Payment info with URL
+ * Tạo yêu cầu thanh toán
+ *
+ * Chức năng: Tạo payment record và URL thanh toán (nếu là online payment).
+ * Luồng xử lý:
+ * 1. Kiểm tra đơn hàng có tồn tại và đang ở trạng thái Pending Payment không.
+ * 2. Nếu là COD -> Không tạo URL.
+ * 3. Nếu đơn đã có Payment record cũ: Reuse và reset trạng thái về PENDING.
+ * 4. Nếu chưa có: Tạo Payment record mới.
+ * 5. Nếu là VNPAY: Gọi `vnpayService` để tạo URL redirect.
+ * @param {number} orderId - ID đơn hàng.
+ * @param {string} clientIp - IP khách hàng (cần cho VNPAY).
+ * @returns {Promise<object>} Thông tin payment và URL.
  */
 const createPayment = async (orderId, clientIp) => {
     const order = await prisma.order.findUnique({
@@ -82,9 +92,20 @@ const createPayment = async (orderId, clientIp) => {
 
 /**
  * Handle VNPAY return (from redirect)
- * Updates order status immediately without waiting for IPN
- * @param {object} vnpParams - VNPay return parameters
- * @returns {Promise<object>} Payment result
+ * Xử lý kết quả trả về từ VNPAY (Redirect)
+ *
+ * Chức năng: Xử lý khi user thanh toán xong trên VNPAY và được redirect về web.
+ * Luồng xử lý:
+ * 1. Verify chữ ký (Signature) để đảm bảo dữ liệu không bị sửa.
+ * 2. Parse thông tin trả về (Mã đơn, mã giao dịch...).
+ * 3. Nếu thành công:
+ *    - Update Payment -> PAID.
+ *    - Update Order -> PAYMENT_PAID.
+ *    - Chuyển trạng thái đơn sang PENDING_CONFIRMATION.
+ * 4. Nếu thất bại:
+ *    - Update Payment -> FAILED.
+ * @param {object} vnpParams - Tham số từ URL redirect.
+ * @returns {Promise<object>} Kết quả xử lý.
  */
 const handleVnpayReturn = async (vnpParams) => {
     // Verify signature
@@ -179,9 +200,12 @@ const handleVnpayReturn = async (vnpParams) => {
 
 /**
  * Handle VNPAY IPN (Instant Payment Notification)
- * This is called by VNPay server - the source of truth for payment status
- * @param {object} vnpParams - VNPay IPN parameters
- * @returns {Promise<object>} IPN response
+ * Xử lý IPN từ VNPAY
+ *
+ * Chức năng: Kênh xác nhận thanh toán tin cậy từ Server VNPAY (Background).
+ * Luồng xử lý: Tương tự `handleVnpayReturn` nhưng trả về response theo chuẩn IPN của VNPAY.
+ * @param {object} vnpParams - Tham số IPN.
+ * @returns {Promise<object>} Response cho VNPAY.
  */
 const handleVnpayIpn = async (vnpParams) => {
     // Verify signature
@@ -293,9 +317,12 @@ const getByOrderId = async (orderId) => {
 
 /**
  * Mark payment as failed (for timeout)
- * @param {number} orderId - Order ID
- * @param {string} reason - Failure reason
- * @returns {Promise<object>} Updated payment
+ * Đánh dấu thanh toán thất bại
+ *
+ * Chức năng: Dùng khi đơn hàng hết hạn thanh toán (hủy đơn treo).
+ * @param {number} orderId - Order ID.
+ * @param {string} reason - Lý do.
+ * @returns {Promise<object>} Payment update.
  */
 const markFailed = async (orderId, reason = 'Payment timeout') => {
     const order = await prisma.order.findUnique({
@@ -328,8 +355,14 @@ const markFailed = async (orderId, reason = 'Payment timeout') => {
 
 /**
  * Confirm COD payment collected
- * @param {number} orderId - Order ID
- * @returns {Promise<object>} Updated payment
+ * Xác nhận đã thu tiền COD
+ *
+ * Chức năng: Shipper xác nhận đã thu tiền.
+ * Luồng xử lý:
+ * 1. Check đơn COD.
+ * 2. Update status Payment và Order -> COD_COLLECTED / PAID.
+ * @param {number} orderId - Order ID.
+ * @returns {Promise<object>} Payment update.
  */
 const confirmCOD = async (orderId) => {
     const order = await prisma.order.findUnique({

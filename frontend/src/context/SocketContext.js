@@ -3,6 +3,7 @@
 /**
  * Socket Context
  * Provides real-time socket connection throughout the app
+ * Context quản lý kết nối Socket.io toàn ứng dụng
  */
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
@@ -12,6 +13,7 @@ const SocketContext = createContext(null);
 
 /**
  * Socket event types
+ * Các loại sự kiện Socket
  */
 export const SOCKET_EVENTS = {
     // Order events
@@ -34,6 +36,7 @@ export function SocketProvider({ children }) {
     const listenersRef = useRef(new Map());
 
     // Initialize socket when authenticated
+    // Khởi tạo Socket khi User đăng nhập thành công
     useEffect(() => {
         if (isAuthenticated && user) {
             const token = localStorage.getItem('accessToken');
@@ -49,6 +52,7 @@ export function SocketProvider({ children }) {
                 });
 
                 // Listen for order status updates
+                // Lắng nghe cập nhật trạng thái đơn hàng (cho User)
                 socket.on(SOCKET_EVENTS.ORDER_STATUS_UPDATED, (data) => {
                     addNotification({
                         type: 'order_update',
@@ -59,6 +63,7 @@ export function SocketProvider({ children }) {
                 });
 
                 // Listen for order cancellation
+                // Lắng nghe đơn hàng bị hủy
                 socket.on(SOCKET_EVENTS.ORDER_CANCELLED, (data) => {
                     addNotification({
                         type: 'order_cancelled',
@@ -69,8 +74,10 @@ export function SocketProvider({ children }) {
                 });
 
                 // Listen for admin order updates
+                // Lắng nghe cập nhật đơn hàng cho Admin/Staff
                 socket.on(SOCKET_EVENTS.ADMIN_ORDER_UPDATED, (data) => {
                     // Filter notifications based on role
+                    // Lọc thông báo dựa trên Role
                     const role = user?.role?.name || user?.role;
                     let shouldNotify = false;
 
@@ -99,6 +106,7 @@ export function SocketProvider({ children }) {
                 });
 
                 // Listen for new orders (admin)
+                // Lắng nghe đơn hàng mới (Admin/Staff)
                 socket.on(SOCKET_EVENTS.ORDER_CREATED, (data) => {
                     const role = user?.role?.name || user?.role;
                     // Warehouse also needs to know about PREPARING if auto-confirmed? 
@@ -124,6 +132,7 @@ export function SocketProvider({ children }) {
     }, [isAuthenticated, user]);
 
     // Add notification
+    // Thêm thông báo mới
     const addNotification = useCallback((notification) => {
         const newNotification = {
             id: Date.now(),
@@ -136,6 +145,7 @@ export function SocketProvider({ children }) {
     }, []);
 
     // Mark notification as read
+    // Đánh dấu đã đọc thông báo
     const markAsRead = useCallback((notificationId) => {
         setNotifications(prev =>
             prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
@@ -143,6 +153,7 @@ export function SocketProvider({ children }) {
     }, []);
 
     // Clear all notifications
+    // Xóa tất cả thông báo
     const clearNotifications = useCallback(() => {
         setNotifications([]);
     }, []);

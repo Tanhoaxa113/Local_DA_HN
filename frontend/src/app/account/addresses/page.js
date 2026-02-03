@@ -36,17 +36,28 @@ const CloseIcon = () => (
     </svg>
 );
 
+/**
+ * User Addresses Page
+ * Trang Quản lý sổ địa chỉ
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách địa chỉ giao hàng
+ * - Thêm mới, chỉnh sửa, xóa địa chỉ
+ * - Đặt địa chỉ mặc định
+ * - Tự động load danh sách Tỉnh/Thành/Phường xã khi thêm/sửa
+ */
 export default function AddressesPage() {
     const [addresses, setAddresses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState(null);
 
-    // Location data
+    // Location data for dropdowns
+    // Dữ liệu Tỉnh/Thành, Phường/Xã cho dropdown
     const [provinces, setProvinces] = useState([]);
     const [wards, setWards] = useState([]);
 
-    // Form data
+    // Form data state
     const [formData, setFormData] = useState({
         label: "",
         fullName: "",

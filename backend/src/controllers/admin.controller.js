@@ -16,11 +16,19 @@ const fs = require('fs').promises;
 const path = require('path');
 
 // ==========================================
-// Dashboard Stats
+// Dashboard Stats (Thống Kê Bảng Điều Khiển)
 // ==========================================
 
 /**
  * Get dashboard stats
+ * Lấy số liệu thống kê tổng quan
+ *
+ * Chức năng: Lấy các chỉ số quan trọng cho trang chủ admin (Tổng doanh thu, Đơn hàng, Khách hàng, Sản phẩm...).
+ * Luồng xử lý:
+ * 1. Gọi service `adminService.getDashboardStats` để tổng hợp dữ liệu từ DB.
+ * 2. Tính toán các chỉ số tăng trưởng so với kỳ trước (nếu có logic này).
+ * 3. Trả về object chứa các số liệu.
+ * Kích hoạt khi: Admin truy cập vào Dashboard (Trang chủ Admin).
  * GET /api/admin/stats
  */
 const getDashboardStats = asyncHandler(async (req, res) => {
@@ -30,6 +38,14 @@ const getDashboardStats = asyncHandler(async (req, res) => {
 
 /**
  * Get revenue chart data
+ * Lấy dữ liệu biểu đồ doanh thu
+ *
+ * Chức năng: Cung cấp dữ liệu để vẽ biểu đồ doanh thu theo thời gian.
+ * Luồng xử lý:
+ * 1. Nhận tham số `period` (week, month, year) từ query string.
+ * 2. Gọi logic tính toán doanh thu theo từng mốc thời gian trong `adminService`.
+ * 3. Trả về mảng dữ liệu [ngày, doanh thu].
+ * Kích hoạt khi: Admin chọn xem biểu đồ doanh thu hoặc thay đổi mốc thời gian lọc.
  * GET /api/admin/revenue
  */
 const getRevenueChart = asyncHandler(async (req, res) => {
@@ -40,6 +56,14 @@ const getRevenueChart = asyncHandler(async (req, res) => {
 
 /**
  * Get top products
+ * Lấy danh sách sản phẩm bán chạy
+ *
+ * Chức năng: Hiển thị top các sản phẩm có doanh số cao nhất.
+ * Luồng xử lý:
+ * 1. Nhận tham số `limit` để giới hạn số lượng (mặc định 5).
+ * 2. Gọi service truy vấn DB sắp xếp theo số lượng đã bán.
+ * 3. Trả về danh sách sản phẩm.
+ * Kích hoạt khi: Admin xem widget "Top sản phẩm" trên dashboard.
  * GET /api/admin/top-products
  */
 const getTopProducts = asyncHandler(async (req, res) => {
@@ -52,6 +76,14 @@ const getTopProducts = asyncHandler(async (req, res) => {
 
 /**
  * Get recent activity
+ * Lấy hoạt động gần đây
+ *
+ * Chức năng: Liệt kê các sự kiện mới nhất (Đơn hàng mới, Khách hàng mới đăng ký...).
+ * Luồng xử lý:
+ * 1. Truy vấn các bảng liên quan (Orders, Users) lấy các bản ghi mới nhất.
+ * 2. Gộp và sắp xếp theo thời gian giảm dần.
+ * 3. Trả về danh sách hoạt động.
+ * Kích hoạt khi: Admin xem widget "Hoạt động gần đây".
  * GET /api/admin/activity
  */
 const getRecentActivity = asyncHandler(async (req, res) => {
@@ -60,11 +92,22 @@ const getRecentActivity = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// Product Management
+// Product Management (Quản Lý Sản Phẩm)
 // ==========================================
 
 /**
  * Get all products (admin)
+ * Lấy danh sách sản phẩm (Admin)
+ *
+ * Chức năng: Lấy danh sách sản phẩm với các bộ lọc dành riêng cho admin (bao gồm cả sản phẩm ẩn).
+ * Luồng xử lý:
+ * 1. Nhận các tham số lọc: page, limit, search, category, brand, status.
+ * 2. Xây dựng object `filters` để truyền vào service.
+ *    - `includeInactive: true`: Cho phép admin thấy sản phẩm đã bị ẩn/xoá mềm.
+ *    - Xử lý filter `status` (sắp hết hàng, hết hàng).
+ * 3. Gọi `productService.getAll` để lấy dữ liệu.
+ * 4. Trả về danh sách sản phẩm cùng thông tin phân trang.
+ * Kích hoạt khi: Admin vào trang "Danh sách sản phẩm".
  * GET /api/admin/products
  */
 const getProducts = asyncHandler(async (req, res) => {
@@ -92,6 +135,14 @@ const getProducts = asyncHandler(async (req, res) => {
 
 /**
  * Get product by ID (admin)
+ * Lấy chi tiết sản phẩm
+ *
+ * Chức năng: Xem chi tiết một sản phẩm cụ thể để chỉnh sửa.
+ * Luồng xử lý:
+ * 1. Lấy `id` sản phẩm từ URL.
+ * 2. Gọi `productService.getById` để lấy thông tin đầy đủ.
+ * 3. Trả về object sản phẩm.
+ * Kích hoạt khi: Admin nhấn vào một sản phẩm để xem hoặc sửa.
  * GET /api/admin/products/:id
  */
 const getProductById = asyncHandler(async (req, res) => {
@@ -102,6 +153,17 @@ const getProductById = asyncHandler(async (req, res) => {
 
 /**
  * Create product
+ * Tạo sản phẩm mới
+ *
+ * Chức năng: Thêm một sản phẩm mới vào hệ thống cùng với ảnh và biến thể.
+ * Luồng xử lý:
+ * 1. Nhận dữ liệu text từ `req.body.data` (được gửi dưới dạng JSON string do có upload file).
+ * 2. Nhận các file ảnh từ `req.files`.
+ * 3. Tách thông tin biến thể (`variants`) và thông tin cơ bản (`baseData`).
+ * 4. Xử lý logic upload ảnh, tạo mảng object `images`.
+ * 5. Gọi `productService.create` để lưu vào DB (dùng transaction).
+ * 6. Trả về sản phẩm vừa tạo.
+ * Kích hoạt khi: Admin điền form "Thêm sản phẩm" và nhấn Lưu.
  * POST /api/admin/products
  */
 const createProduct = asyncHandler(async (req, res) => {
@@ -126,6 +188,16 @@ const createProduct = asyncHandler(async (req, res) => {
 
 /**
  * Update product
+ * Cập nhật sản phẩm
+ *
+ * Chức năng: Chỉnh sửa thông tin sản phẩm (tên, giá, mô tả, ảnh, biến thể, ...).
+ * Luồng xử lý:
+ * 1. Lấy `id` từ URL.
+ * 2. Nhận dữ liệu cập nhật từ `req.body` và file ảnh mới (nếu có).
+ * 3. Nếu có ảnh mới upload, định dạng lại thành object `newImages`.
+ * 4. Gọi `productService.update` để thực hiện cập nhật DB.
+ * 5. Trả về thông tin sau cập nhật.
+ * Kích hoạt khi: Admin sửa đổi thông tin sản phẩm và nhấn Lưu.
  * PUT /api/admin/products/:id
  */
 const updateProduct = asyncHandler(async (req, res) => {
@@ -149,6 +221,15 @@ const updateProduct = asyncHandler(async (req, res) => {
 
 /**
  * Delete product
+ * Xóa sản phẩm
+ *
+ * Chức năng: Xóa (hoặc ẩn) một sản phẩm khỏi hệ thống.
+ * Luồng xử lý:
+ * 1. Lấy `id` từ URL.
+ * 2. Gọi `productService.remove`.
+ *    - Logic thực tế có thể là xoá mềm (`isActive = false`) hoặc xoá cứng tuỳ business.
+ * 3. Trả về thông báo thành công.
+ * Kích hoạt khi: Admin nhấn nút "Xóa" trên dòng sản phẩm.
  * DELETE /api/admin/products/:id
  */
 const deleteProduct = asyncHandler(async (req, res) => {
@@ -159,6 +240,15 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 /**
  * Upload product images
+ * Tải lên ảnh sản phẩm
+ *
+ * Chức năng: Upload thêm ảnh cho một sản phẩm đã có.
+ * Luồng xử lý:
+ * 1. Lấy `id` sản phẩm từ URL.
+ * 2. Lấy danh sách file từ `req.files`.
+ * 3. Duyệt qua từng file, tạo bản ghi `productImage` trong DB.
+ * 4. Trả về danh sách ảnh đã upload.
+ * Kích hoạt khi: Admin upload thêm ảnh trong trang sửa sản phẩm.
  * POST /api/admin/products/:id/images
  */
 const uploadProductImages = asyncHandler(async (req, res) => {
@@ -185,6 +275,15 @@ const uploadProductImages = asyncHandler(async (req, res) => {
 
 /**
  * Delete product image
+ * Xóa ảnh sản phẩm
+ *
+ * Chức năng: Xóa một ảnh cụ thể của sản phẩm.
+ * Luồng xử lý:
+ * 1. Lấy `productId` và `imageId` từ URL.
+ * 2. Kiểm tra ảnh có tồn tại và thuộc sản phẩm đó không.
+ * 3. Xóa file vật lý trên ổ cứng (`deleteFile`).
+ * 4. Xóa bản ghi trong DB.
+ * Kích hoạt khi: Admin nhấn nút "Xóa" trên một ảnh trong thư viện ảnh sản phẩm.
  * DELETE /api/admin/products/:productId/images/:imageId
  */
 const deleteProductImage = asyncHandler(async (req, res) => {
@@ -214,11 +313,21 @@ const deleteProductImage = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// Order Management
+// Order Management (Quản Lý Đơn Hàng)
 // ==========================================
 
 /**
  * Get all orders (admin)
+ * Lấy danh sách đơn hàng
+ *
+ * Chức năng: Xem danh sách đơn hàng với các bộ lọc năng cao.
+ * Luồng xử lý:
+ * 1. Nhận các tham số lọc: page, limit, status, search, startDate, endDate.
+ * 2. Xây dựng object `filters`.
+ *    - Chuyển `startDate`, `endDate` sang kiểu Date.
+ * 3. Gọi `orderService.getAll` lấy dữ liệu.
+ * 4. Trả về danh sách đơn hàng.
+ * Kích hoạt khi: Admin vào màn hình "Quản lý đơn hàng".
  * GET /api/admin/orders
  */
 const getOrders = asyncHandler(async (req, res) => {
@@ -248,6 +357,15 @@ const getOrders = asyncHandler(async (req, res) => {
 
 /**
  * Get order by ID (admin)
+ * Lấy chi tiết đơn hàng
+ *
+ * Chức năng: Xem thông tin chi tiết một đơn hàng và các trạng thái tiếp theo có thể chuyển.
+ * Luồng xử lý:
+ * 1. Lấy `id` đơn hàng từ URL.
+ * 2. Gọi `orderService.getById` lấy thông tin chi tiết (sản phẩm, khách hàng, thanh toán...).
+ * 3. Gọi `orderService.getNextStatuses` để biết đơn này có thể chuyển sang trạng thái nào tiếp theo dựa trên role của người dùng.
+ * 4. Trả về order kèm `nextStatuses`.
+ * Kích hoạt khi: Admin bấm vào xem chi tiết một đơn hàng.
  * GET /api/admin/orders/:id
  */
 const getOrderById = asyncHandler(async (req, res) => {
@@ -263,6 +381,16 @@ const getOrderById = asyncHandler(async (req, res) => {
 
 /**
  * Update order status
+ * Cập nhật trạng thái đơn hàng
+ *
+ * Chức năng: Chuyển trạng thái đơn hàng (VD: Chờ xác nhận -> Đang giao).
+ * Luồng xử lý:
+ * 1. Lấy `id` đơn hàng, trạng thái mới (`status`) và ghi chú (`note`).
+ * 2. Gọi `orderService.updateStatus`.
+ *    - Logic này thường sẽ kiểm tra xem việc chuyển trạng thái có hợp lệ không.
+ *    - Có thể gửi email thông báo cho khách hàng.
+ * 3. Trả về đơn hàng sau khi update.
+ * Kích hoạt khi: Admin chọn trạng thái mới và bấm "Cập nhật".
  * PUT /api/admin/orders/:id/status
  */
 const updateOrderStatus = asyncHandler(async (req, res) => {
@@ -283,6 +411,13 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
 /**
  * Approve refund request
+ * Duyệt yêu cầu hoàn tiền
+ *
+ * Chức năng: Chấp nhận yêu cầu hoàn tiền từ khách hàng.
+ * Luồng xử lý:
+ * 1. Chuyển trạng thái đơn hàng sang `REFUNDING`.
+ * 2. Gọi logic hoàn tiền (nếu có tích hợp cổng thanh toán tự động) hoặc chỉ ghi nhận thủ công.
+ * Kích hoạt khi: Admin bấm "Duyệt hoàn tiền" cho đơn hàng có yêu cầu.
  * POST /api/admin/orders/:id/refund/approve
  */
 const approveRefund = asyncHandler(async (req, res) => {
@@ -302,11 +437,20 @@ const approveRefund = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// Category Management
+// Category Management (Quản Lý Danh Mục)
 // ==========================================
 
 /**
  * Create category
+ * Tạo danh mục mới
+ *
+ * Chức năng: Thêm một danh mục sản phẩm mới.
+ * Luồng xử lý:
+ * 1. Nhận tên, slug, mô tả, ảnh, parentId từ `req.body`.
+ * 2. Tự động tạo slug nếu không có.
+ * 3. Gọi prisma để tạo bản ghi mới.
+ * 4. Trả về danh mục vừa tạo.
+ * Kích hoạt khi: Admin nhấn "Thêm danh mục" và điền form.
  * POST /api/admin/categories
  */
 const createCategory = asyncHandler(async (req, res) => {
@@ -328,6 +472,14 @@ const createCategory = asyncHandler(async (req, res) => {
 
 /**
  * Update category
+ * Cập nhật danh mục
+ *
+ * Chức năng: Sửa thông tin danh mục (tên, cha/con, ảnh, ẩn/hiện...).
+ * Luồng xử lý:
+ * 1. Lấy `id` từ URL.
+ * 2. Cập nhật các trường thông tin trong DB.
+ * 3. Trả về danh mục sau cập nhật.
+ * Kích hoạt khi: Admin sửa danh mục.
  * PUT /api/admin/categories/:id
  */
 const updateCategory = asyncHandler(async (req, res) => {
@@ -352,6 +504,16 @@ const updateCategory = asyncHandler(async (req, res) => {
 
 /**
  * Delete category
+ * Xóa danh mục
+ *
+ * Chức năng: Xóa danh mục khỏi hệ thống.
+ * Luồng xử lý:
+ * 1. Lấy `id` từ URL.
+ * 2. Kiểm tra danh mục có chứa sản phẩm nào không.
+ *    - Nếu có: Báo lỗi (không cho xóa để bảo toàn dữ liệu).
+ *    - Nếu không: Thực hiện xóa.
+ * 3. Trả về thông báo thành công.
+ * Kích hoạt khi: Admin nhấn "Xóa" danh mục.
  * DELETE /api/admin/categories/:id
  */
 const deleteCategory = asyncHandler(async (req, res) => {
@@ -374,11 +536,19 @@ const deleteCategory = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// Brand Management
+// Brand Management (Quản Lý Thương Hiệu)
 // ==========================================
 
 /**
  * Create brand
+ * Tạo thương hiệu mới
+ *
+ * Chức năng: Thêm thương hiệu (hãng sản xuất).
+ * Luồng xử lý:
+ * 1. Nhận thông tin từ body.
+ * 2. Tạo bản ghi trong DB.
+ * 3. Trả về kết quả.
+ * Kích hoạt khi: Admin thêm thương hiệu.
  * POST /api/admin/brands
  */
 const createBrand = asyncHandler(async (req, res) => {
@@ -398,6 +568,13 @@ const createBrand = asyncHandler(async (req, res) => {
 
 /**
  * Update brand
+ * Cập nhật thương hiệu
+ *
+ * Chức năng: Sửa thông tin thương hiệu.
+ * Luồng xử lý:
+ * 1. Lấy `id` từ URL.
+ * 2. Cập nhật DB.
+ * Kích hoạt khi: Admin sửa thương hiệu.
  * PUT /api/admin/brands/:id
  */
 const updateBrand = asyncHandler(async (req, res) => {
@@ -414,6 +591,13 @@ const updateBrand = asyncHandler(async (req, res) => {
 
 /**
  * Delete brand
+ * Xóa thương hiệu
+ *
+ * Chức năng: Xóa thương hiệu.
+ * Luồng xử lý:
+ * 1. Kiểm tra xem có sản phẩm thuộc thương hiệu này không.
+ * 2. Nếu không, tiến hành xóa.
+ * Kích hoạt khi: Admin xóa thương hiệu.
  * DELETE /api/admin/brands/:id
  */
 const deleteBrand = asyncHandler(async (req, res) => {
@@ -436,11 +620,21 @@ const deleteBrand = asyncHandler(async (req, res) => {
 });
 
 // ==========================================
-// User Management
+// User Management (Quản Lý Người Dùng)
 // ==========================================
 
 /**
  * Get all users
+ * Lấy danh sách người dùng
+ *
+ * Chức năng: Xem danh sách user (khách hàng, nhân viên) với phân trang và lọc.
+ * Luồng xử lý:
+ * 1. Nhận tham số page, limit, role, search.
+ * 2. Xây dựng câu truy vấn Prisma (`findMany`).
+ * 3. Đếm tổng số user để tính phân trang (`count`).
+ * 4. Transform dữ liệu (loại bỏ password, format lại nếu cần).
+ * 5. Trả về danh sách.
+ * Kích hoạt khi: Admin vào trang "Quản lý người dùng".
  * GET /api/admin/users
  */
 const getUsers = asyncHandler(async (req, res) => {
@@ -501,6 +695,14 @@ const getUsers = asyncHandler(async (req, res) => {
 
 /**
  * Get user by ID
+ * Lấy chi tiết người dùng
+ *
+ * Chức năng: Xem thông tin chi tiết một user kèm lịch sử đơn hàng.
+ * Luồng xử lý:
+ * 1. Lấy DB bao gồm: role, tier, địa chỉ, 10 đơn hàng gần nhất.
+ * 2. Tính tổng tiền đã chi tiêu (để Admin xem sét hạng thành viên).
+ * 3. Trả về kết quả.
+ * Kích hoạt khi: Admin bấm xem chi tiết một khách hàng.
  * GET /api/admin/users/:id
  */
 const getUserById = asyncHandler(async (req, res) => {
@@ -549,6 +751,13 @@ const getUserById = asyncHandler(async (req, res) => {
 
 /**
  * Update user
+ * Cập nhật người dùng
+ *
+ * Chức năng: Admin sửa thông tin user (VD: đổi quyền, đổi hạng, cộng điểm...).
+ * Luồng xử lý:
+ * 1. Nhận thông tin update.
+ * 2. Gọi Prisma update.
+ * Kích hoạt khi: Admin sửa user.
  * PUT /api/admin/users/:id
  */
 const updateUser = asyncHandler(async (req, res) => {
@@ -573,6 +782,13 @@ const updateUser = asyncHandler(async (req, res) => {
 
 /**
  * Toggle user status
+ * Khóa/Mở khóa tài khoản
+ *
+ * Chức năng: Chặn tài khoản đăng nhập (Khóa) hoặc mở lại.
+ * Luồng xử lý:
+ * 1. Nhận `isActive` (true/false).
+ * 2. Cập nhật field `isActive` trong DB.
+ * Kích hoạt khi: Admin bấm nút Kích hoạt/Vô hiệu hóa user.
  * PUT /api/admin/users/:id/status
  */
 const toggleUserStatus = asyncHandler(async (req, res) => {

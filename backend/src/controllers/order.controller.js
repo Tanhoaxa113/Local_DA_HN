@@ -1,6 +1,6 @@
 /**
  * Order Controller
- * Handles HTTP requests for order endpoints
+ * Điều khiển các hoạt động liên quan đến đơn hàng
  */
 const orderService = require('../services/order.service');
 const asyncHandler = require('../utils/asyncHandler');
@@ -9,6 +9,15 @@ const { sendSuccess, sendCreated, sendNoContent } = require('../utils/response')
 
 /**
  * Create order from cart
+ * Tạo đơn hàng
+ *
+ * Chức năng: Tạo một đơn hàng mới từ giỏ hàng hiện tại của người dùng.
+ * Luồng xử lý:
+ * 1. Lấy userId từ token.
+ * 2. Lấy thông tin thanh toán (addressId, paymentMethod, note) từ `req.body`.
+ * 3. Gọi `orderService.createFromCart` để xử lý logic tạo đơn (lấy item trong cart, tính tiền, tạo record Order...).
+ * 4. Trả về thông tin đơn hàng vừa tạo.
+ * Kích hoạt khi: Người dùng nhấn nút "Đặt hàng" ở trang thanh toán.
  * POST /api/orders
  */
 const create = asyncHandler(async (req, res) => {
@@ -25,6 +34,14 @@ const create = asyncHandler(async (req, res) => {
 
 /**
  * Get my orders
+ * Lấy đơn hàng của tôi
+ *
+ * Chức năng: Xem lịch sử mua hàng của người dùng đang đăng nhập.
+ * Luồng xử lý:
+ * 1. Lấy userId từ token.
+ * 2. Gọi `orderService.getAll` với filter `userId`.
+ * 3. Trả về danh sách đơn hàng.
+ * Kích hoạt khi: Khách hàng vào trang "Đơn hàng của tôi".
  * GET /api/orders/my
  */
 const getMyOrders = asyncHandler(async (req, res) => {
@@ -38,6 +55,14 @@ const getMyOrders = asyncHandler(async (req, res) => {
 
 /**
  * Get all orders (staff)
+ * Lấy tất cả đơn hàng (cho Nhân viên/Admin)
+ *
+ * Chức năng: Xem danh sách toàn bộ đơn hàng trong hệ thống.
+ * Luồng xử lý:
+ * 1. Nhận các tham số lọc từ query.
+ * 2. Gọi `orderService.getAll` (không giới hạn userId).
+ * 3. Trả về danh sách.
+ * Kích hoạt khi: Nhân viên vào trang quản lý đơn hàng.
  * GET /api/orders
  */
 const getAll = asyncHandler(async (req, res) => {
@@ -48,6 +73,17 @@ const getAll = asyncHandler(async (req, res) => {
 
 /**
  * Get order by ID
+ * Lấy chi tiết đơn hàng
+ *
+ * Chức năng: Xem chi tiết một đơn hàng.
+ * Luồng xử lý:
+ * 1. Lấy `id` từ URL.
+ * 2. Kiểm tra quyền:
+ *    - Nếu là Staff/Admin: Được xem mọi đơn.
+ *    - Nếu là Customer: Chỉ được xem đơn của chính mình (truyền `userId` vào service để check).
+ * 3. Gọi `orderService.getById`.
+ * 4. Trả về chi tiết đơn hàng.
+ * Kích hoạt khi: Người dùng bấm vào mã đơn hàng để xem chi tiết.
  * GET /api/orders/:id
  */
 const getById = asyncHandler(async (req, res) => {
@@ -63,6 +99,11 @@ const getById = asyncHandler(async (req, res) => {
 
 /**
  * Get order by order number
+ * Lấy đơn hàng theo mã đơn (Order Number)
+ *
+ * Chức năng: Tìm đơn hàng bằng mã code (VD: ORD123456) thay vì ID.
+ * Luồng xử lý: Tương tự `getById` nhưng dùng `orderNumber`.
+ * Kích hoạt khi: Tra cứu đơn hàng, hoặc quét mã vạch đơn hàng.
  * GET /api/orders/number/:orderNumber
  */
 const getByOrderNumber = asyncHandler(async (req, res) => {
@@ -78,6 +119,14 @@ const getByOrderNumber = asyncHandler(async (req, res) => {
 
 /**
  * Update order status
+ * Cập nhật trạng thái đơn (chung)
+ *
+ * Chức năng: Thay đổi trạng thái đơn hàng (Dành cho Staff/Admin).
+ * Luồng xử lý:
+ * 1. Lấy `id` đơn hàng.
+ * 2. Lấy trạng thái mới từ body.
+ * 3. Gọi `orderService.updateStatus` kèm role của người gọi để kiểm tra quyền hạn chuyển trạng thái.
+ * Kích hoạt khi: Nhân viên xử lý đơn hàng (Xác nhận, Đóng gói...).
  * PATCH /api/orders/:id/status
  */
 const updateStatus = asyncHandler(async (req, res) => {
@@ -96,6 +145,15 @@ const updateStatus = asyncHandler(async (req, res) => {
 
 /**
  * Cancel order
+ * Hủy đơn hàng
+ *
+ * Chức năng: Khách hàng hoặc nhân viên hủy đơn.
+ * Luồng xử lý:
+ * 1. Lấy `id` đơn hàng.
+ * 2. Gọi `orderService.cancel`.
+ *    - System sẽ check xem đơn hàng có đang ở trạng thái cho phép hủy không (VD: Chưa giao hàng).
+ * 3. Cập nhật lý do hủy.
+ * Kích hoạt khi: Khách hàng nhấn "Hủy đơn" trên web.
  * POST /api/orders/:id/cancel
  */
 const cancel = asyncHandler(async (req, res) => {
@@ -113,6 +171,15 @@ const cancel = asyncHandler(async (req, res) => {
 
 /**
  * Request refund
+ * Yêu cầu hoàn tiền
+ *
+ * Chức năng: Khách hàng yêu cầu hoàn tiền cho đơn hàng đã thanh toán/nhận hàng.
+ * Luồng xử lý:
+ * 1. Lấy `id` đơn hàng.
+ * 2. Gọi `orderService.requestRefund`.
+ *    - Chuyển trạng thái sang "Yêu cầu hoàn tiền".
+ * 3. Chờ Admin duyệt.
+ * Kích hoạt khi: Khách hàng bấm "Yêu cầu hoàn tiền".
  * POST /api/orders/:id/refund
  */
 const requestRefund = asyncHandler(async (req, res) => {
@@ -129,6 +196,11 @@ const requestRefund = asyncHandler(async (req, res) => {
 
 /**
  * Get valid next statuses for order
+ * Lấy các trạng thái tiếp theo hợp lệ
+ *
+ * Chức năng: Giúp Frontend hiển thị các nút thao tác đúng (VD: Đang ở "Chờ xác nhận" thì chỉ hiện nút "Xác nhận", không hiện nút "Giao hàng").
+ * Luồng xử lý: Gọi `orderService.getNextStatuses` dựa trên trạng thái hiện tại và role người dùng.
+ * Kích hoạt khi: Vào chi tiết đơn hàng.
  * GET /api/orders/:id/next-statuses
  */
 const getNextStatuses = asyncHandler(async (req, res) => {
@@ -142,6 +214,14 @@ const getNextStatuses = asyncHandler(async (req, res) => {
 
 /**
  * Confirm order received
+ * Xác nhận đã nhận hàng
+ *
+ * Chức năng: Khách hàng xác nhận đã nhận được hàng (hoặc đã nhận tiền hoàn).
+ * Luồng xử lý:
+ * 1. Lấy `id` đơn hàng.
+ * 2. Kiểm tra trạng thái hiện tại (Phải là 'DELIVERED' hoặc 'REFUNDED').
+ * 3. Chuyển sang trạng thái cuối cùng ('COMPLETED' hoặc 'REFUND_CONFIRMED').
+ * Kích hoạt khi: Khách hàng bấm "Đã nhận hàng".
  * POST /api/orders/:id/confirm
  */
 const confirmOrder = asyncHandler(async (req, res) => {

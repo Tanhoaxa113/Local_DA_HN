@@ -40,19 +40,36 @@ const XCircleIcon = () => (
     </svg>
 );
 
+/**
+ * Order Detail Page
+ * Trang Chi tiết đơn hàng (User)
+ * 
+ * Chức năng:
+ * - Hiển thị thông tin chi tiết đơn hàng
+ * - Theo dõi trạng thái đơn hàng (Timeline)
+ * - Hủy đơn hàng (nếu được phép)
+ * - Thanh toán lại (với đơn VNPAY chưa thanh toán)
+ * - Xác nhận đã nhận hàng
+ * - Yêu cầu hoàn tiền
+ */
 export default function OrderDetailPage() {
     const params = useParams();
     const router = useRouter();
     const orderNumber = params.orderNumber;
 
+    // State management
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [cancelling, setCancelling] = useState(false);
+
+    // Modal states
     const [showRefundModal, setShowRefundModal] = useState(false);
     const [showConfirmRefundModal, setShowConfirmRefundModal] = useState(false);
     const [refundReason, setRefundReason] = useState("");
 
+    // Fetch order details
+    // Lấy thông tin chi tiết đơn hàng
     useEffect(() => {
         if (orderNumber) {
             fetchOrder();
@@ -76,11 +93,13 @@ export default function OrderDetailPage() {
     }, [orderNumber]);
 
     // Subscribe to real-time order updates
+    // Đăng ký nhận cập nhật trạng thái đơn hàng realtime
     const { subscribe, unsubscribe } = useSocket();
 
     useEffect(() => {
         if (!order) return;
 
+        // Handle status updates
         const handleStatusUpdate = (data) => {
             if (data.orderNumber === order.orderNumber) {
                 console.log('[Order] Real-time update received:', data);
@@ -88,6 +107,7 @@ export default function OrderDetailPage() {
             }
         };
 
+        // Handle cancellation events
         const handleOrderCancelled = (data) => {
             if (data.orderNumber === order.orderNumber) {
                 console.log('[Order] Order cancelled:', data);

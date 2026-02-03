@@ -1,12 +1,14 @@
 /**
  * Refund Auto-confirm Job
  * Automatically confirms refunds after 3 days of being in REFUNDED status
+ * Job tự động xác nhận hoàn tiền sau 3 ngày
  */
 const cron = require('node-cron');
 const orderService = require('../services/order.service');
 
 const start = () => {
     // Run daily at midnight
+    // Chạy mỗi ngày lúc 00:00
     cron.schedule('0 0 * * *', async () => {
         await processRefundAutoConfirm();
     });

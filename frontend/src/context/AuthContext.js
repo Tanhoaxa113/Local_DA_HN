@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
     const [error, setError] = useState(null);
 
     // Check if user is authenticated on mount
+    // Kiểm tra trạng thái đăng nhập khi load trang
     useEffect(() => {
         checkAuth();
     }, []);
@@ -23,6 +24,7 @@ export function AuthProvider({ children }) {
                 return;
             }
 
+            // Gọi API lấy thông tin Profile để xác thực
             const response = await authAPI.getProfile();
             if (response.success) {
                 setUser(response.data);
@@ -49,6 +51,7 @@ export function AuthProvider({ children }) {
                 const { user: userData, tokens } = response.data;
 
                 // Store tokens
+                // Lưu Token vào LocalStorage
                 localStorage.setItem("accessToken", tokens.accessToken);
                 localStorage.setItem("refreshToken", tokens.refreshToken);
 
@@ -73,6 +76,7 @@ export function AuthProvider({ children }) {
                 const { user: newUser, tokens } = response.data;
 
                 // Store tokens
+                // Lưu Token vào LocalStorage
                 localStorage.setItem("accessToken", tokens.accessToken);
                 localStorage.setItem("refreshToken", tokens.refreshToken);
 

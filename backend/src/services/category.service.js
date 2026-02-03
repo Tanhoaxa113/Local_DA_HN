@@ -1,6 +1,7 @@
 /**
  * Category Service
  * Handles category CRUD operations with hierarchy support
+ * Quản lý danh mục sản phẩm (hỗ trợ phân cấp)
  */
 const prisma = require('../config/database');
 const slugify = require('slugify');
@@ -9,9 +10,16 @@ const { deleteFile } = require('../config/multer');
 
 /**
  * Generate unique slug
- * @param {string} name - Category name
- * @param {number|null} excludeId - ID to exclude from uniqueness check
- * @returns {Promise<string>} Unique slug
+ * Tạo slug duy nhất
+ *
+ * Chức năng: Tạo slug từ tên danh mục.
+ * Luồng xử lý:
+ * 1. Slugify tên danh mục.
+ * 2. Kiểm tra trùng lặp trong DB.
+ * 3. Nếu trùng -> Thêm số đếm vào sau cho đến khi duy nhất.
+ * @param {string} name - Tên danh mục.
+ * @param {number|null} excludeId - ID loại trừ (khi update).
+ * @returns {Promise<string>} Slug duy nhất.
  */
 const generateSlug = async (name, excludeId = null) => {
     let slug = slugify(name, { lower: true, strict: true, locale: 'vi' });
@@ -34,8 +42,15 @@ const generateSlug = async (name, excludeId = null) => {
 
 /**
  * Create a new category
- * @param {object} data - Category data
- * @returns {Promise<object>} Created category
+ * Tạo danh mục mới
+ *
+ * Chức năng: Admin tạo danh mục mới.
+ * Luồng xử lý:
+ * 1. Nếu có `parentId` -> Kiểm tra xem danh mục cha có tồn tại không.
+ * 2. Tạo slug.
+ * 3. Thêm mới vào DB.
+ * @param {object} data - Dữ liệu danh mục.
+ * @returns {Promise<object>} Danh mục vừa tạo.
  */
 const create = async (data) => {
     const { name, description, image, parentId, sortOrder } = data;
@@ -74,8 +89,15 @@ const create = async (data) => {
 
 /**
  * Get all categories (with optional tree structure)
- * @param {object} options - Query options
- * @returns {Promise<object[]>} Categories list
+ * Lấy danh sách danh mục
+ *
+ * Chức năng: Lấy tất cả danh mục.
+ * Luồng xử lý:
+ * 1. `tree = true`: Trả về dạng cây phân cấp (chỉ lấy cha, include con).
+ * 2. `tree = false`: Trả về danh sách phẳng.
+ * 3. Hỗ trợ option `includeCount` để đếm số sản phẩm trong mỗi danh mục.
+ * @param {object} options - Tùy chọn (tree, activeOnly, includeCount).
+ * @returns {Promise<object[]>} Danh sách danh mục.
  */
 const getAll = async (options = {}) => {
     const { tree = false, activeOnly = true, includeCount = false } = options;
@@ -107,8 +129,11 @@ const getAll = async (options = {}) => {
 
 /**
  * Get category by ID or slug
- * @param {number|string} idOrSlug - Category ID or slug
- * @returns {Promise<object>} Category
+ * Lấy chi tiết danh mục
+ *
+ * Chức năng: Tìm danh mục theo ID hoặc Slug.
+ * @param {number|string} idOrSlug - ID hoặc Slug.
+ * @returns {Promise<object>} Thông tin danh mục.
  */
 const getByIdOrSlug = async (idOrSlug) => {
     const isId = !isNaN(parseInt(idOrSlug, 10));
@@ -136,9 +161,20 @@ const getByIdOrSlug = async (idOrSlug) => {
 
 /**
  * Update category
- * @param {number} id - Category ID
- * @param {object} data - Update data
- * @returns {Promise<object>} Updated category
+ * Cập nhật danh mục
+ *
+ * Chức năng: Admin sửa danh mục.
+ * Luồng xử lý:
+ * 1. Kiểm tra tồn tại.
+ * 2. Kiểm tra tham chiếu vòng (`Circular Reference`):
+ *    - Danh mục không thể là cha của chính nó.
+ *    - Danh mục không thể làm con của một danh mục đang là con cháu của nó (Logic đệ quy kiểm tra cha).
+ * 3. Tạo lại slug nếu đổi tên.
+ * 4. Xóa ảnh cũ nếu upload ảnh mới.
+ * 5. Update DB.
+ * @param {number} id - Category ID.
+ * @param {object} data - Dữ liệu update.
+ * @returns {Promise<object>} Danh mục đã sửa.
  */
 const update = async (id, data) => {
     const { name, description, image, parentId, sortOrder, isActive } = data;
@@ -215,7 +251,13 @@ const update = async (id, data) => {
 
 /**
  * Delete category
- * @param {number} id - Category ID
+ * Xóa danh mục
+ *
+ * Chức năng: Admin xóa danh mục.
+ * Logic:
+ * 1. Không thể xóa nếu có sản phẩm.
+ * 2. Không thể xóa nếu có danh mục con (phải xóa con trước hoặc di chuyển con sang cha khác).
+ * @param {number} id - Category ID.
  * @returns {Promise<void>}
  */
 const remove = async (id) => {

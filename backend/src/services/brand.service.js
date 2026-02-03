@@ -1,6 +1,7 @@
 /**
  * Brand Service
  * Handles brand CRUD operations
+ * Quản lý thương hiệu sản phẩm
  */
 const prisma = require('../config/database');
 const slugify = require('slugify');
@@ -9,9 +10,16 @@ const { deleteFile } = require('../config/multer');
 
 /**
  * Generate unique slug
- * @param {string} name - Brand name
- * @param {number|null} excludeId - ID to exclude from uniqueness check
- * @returns {Promise<string>} Unique slug
+ * Tạo slug duy nhất
+ *
+ * Chức năng: Tạo đường dẫn thân thiện (slug) từ tên thương hiệu.
+ * Luồng xử lý:
+ * 1. Slugify tên (ví dụ: "Nike" -> "nike").
+ * 2. Kiểm tra trong DB xem slug đã tồn tại chưa.
+ * 3. Nếu trùng -> Thêm số đếm vào sau (ví dụ: "nike-1") và check lại đến khi duy nhất.
+ * @param {string} name - Tên thương hiệu.
+ * @param {number|null} excludeId - ID cần loại trừ (dùng khi update).
+ * @returns {Promise<string>} Slug duy nhất.
  */
 const generateSlug = async (name, excludeId = null) => {
     let slug = slugify(name, { lower: true, strict: true, locale: 'vi' });
@@ -34,8 +42,15 @@ const generateSlug = async (name, excludeId = null) => {
 
 /**
  * Create a new brand
- * @param {object} data - Brand data
- * @returns {Promise<object>} Created brand
+ * Tạo thương hiệu mới
+ *
+ * Chức năng: Admin tạo thương hiệu.
+ * Luồng xử lý:
+ * 1. Kiểm tra trùng tên.
+ * 2. Tạo slug.
+ * 3. Lưu vào DB.
+ * @param {object} data - Dữ liệu thương hiệu.
+ * @returns {Promise<object>} Thương hiệu vừa tạo.
  */
 const create = async (data) => {
     const { name, description, logo } = data;
@@ -68,8 +83,11 @@ const create = async (data) => {
 
 /**
  * Get all brands
- * @param {object} options - Query options
- * @returns {Promise<object[]>} Brands list
+ * Lấy danh sách thương hiệu
+ *
+ * Chức năng: Lấy tất cả thương hiệu (thường dùng cho Dropdown lọc).
+ * @param {object} options - Tùy chọn (activeOnly, includeCount).
+ * @returns {Promise<object[]>} Danh sách thương hiệu.
  */
 const getAll = async (options = {}) => {
     const { activeOnly = true, includeCount = false } = options;
@@ -89,8 +107,11 @@ const getAll = async (options = {}) => {
 
 /**
  * Get brand by ID or slug
- * @param {number|string} idOrSlug - Brand ID or slug
- * @returns {Promise<object>} Brand
+ * Lấy chi tiết thương hiệu
+ *
+ * Chức năng: Lấy thông tin thương hiệu theo ID hoặc Slug.
+ * @param {number|string} idOrSlug - ID hoặc Slug.
+ * @returns {Promise<object>} Thương hiệu.
  */
 const getByIdOrSlug = async (idOrSlug) => {
     const isId = !isNaN(parseInt(idOrSlug, 10));
@@ -113,9 +134,17 @@ const getByIdOrSlug = async (idOrSlug) => {
 
 /**
  * Update brand
- * @param {number} id - Brand ID
- * @param {object} data - Update data
- * @returns {Promise<object>} Updated brand
+ * Cập nhật thương hiệu
+ *
+ * Chức năng: Admin sửa thông tin thương hiệu.
+ * Luồng xử lý:
+ * 1. Kiểm tra tồn tại.
+ * 2. Nếu đổi tên -> Kiểm tra trùng tên và tạo slug mới.
+ * 3. Nếu đổi logo -> Xóa logo cũ.
+ * 4. Update DB.
+ * @param {number} id - Brand ID.
+ * @param {object} data - Dữ liệu update.
+ * @returns {Promise<object>} Thương hiệu đã sửa.
  */
 const update = async (id, data) => {
     const { name, description, logo, isActive } = data;
@@ -169,7 +198,11 @@ const update = async (id, data) => {
 
 /**
  * Delete brand
- * @param {number} id - Brand ID
+ * Xóa thương hiệu
+ *
+ * Chức năng: Admin xóa thương hiệu.
+ * Logic: Không cho xóa nếu thương hiệu này đang có sản phẩm (ràng buộc toàn vẹn dữ liệu).
+ * @param {number} id - Brand ID.
  * @returns {Promise<void>}
  */
 const remove = async (id) => {

@@ -34,21 +34,36 @@ const TrashIcon = () => (
     </svg>
 );
 
+/**
+ * Admin Products Management Page
+ * Trang Quản lý sản phẩm (Admin)
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách sản phẩm
+ * - Lọc theo danh mục, thương hiệu, trạng thái
+ * - Tìm kiếm sản phẩm
+ * - Thêm mới, chỉnh sửa, xóa sản phẩm
+ */
 export default function AdminProductsPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const userRole = user?.role?.name || user?.role;
 
+    // Data states
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Filter & Search states
     const [search, setSearch] = useState("");
     const [filters, setFilters] = useState({
         category: "",
         brand: "",
         status: "",
     });
+
+    // Pagination state
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 10,

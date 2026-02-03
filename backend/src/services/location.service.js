@@ -1,13 +1,15 @@
 /**
  * Location Service
  * Handles province, district, and ward data
+ * Dịch vụ cung cấp thông tin hành chính (Tỉnh/Thành, Quận/Huyện, Phường/Xã)
  */
 const prisma = require('../config/database');
 const ApiError = require('../utils/ApiError');
 
 /**
  * Get all provinces
- * @returns {Promise<object[]>} List of provinces
+ * Lấy danh sách Tỉnh/Thành
+ * @returns {Promise<object[]>} Danh sách tỉnh thành.
  */
 const getProvinces = async () => {
     const provinces = await prisma.province.findMany({
@@ -25,8 +27,11 @@ const getProvinces = async () => {
 
 /**
  * Get districts by province
- * @param {number} provinceId - Province ID
- * @returns {Promise<object[]>} List of districts
+ * Lấy danh sách Quận/Huyện theo Tỉnh
+ *
+ * Chức năng: User chọn Tỉnh -> Load danh sách Quận của Tỉnh đó.
+ * @param {number} provinceId - ID Tỉnh.
+ * @returns {Promise<object[]>} Danh sách quận huyện.
  */
 const getDistrictsByProvince = async (provinceId) => {
     const province = await prisma.province.findUnique({
@@ -53,8 +58,11 @@ const getDistrictsByProvince = async (provinceId) => {
 
 /**
  * Get wards by district
- * @param {number} districtId - District ID
- * @returns {Promise<object[]>} List of wards
+ * Lấy danh sách Phường/Xã theo Quận
+ *
+ * Chức năng: User chọn Quận -> Load danh sách Phường.
+ * @param {number} districtId - ID Quận.
+ * @returns {Promise<object[]>} Danh sách phường xã.
  */
 const getWardsByDistrict = async (districtId) => {
     const district = await prisma.district.findUnique({
@@ -81,8 +89,9 @@ const getWardsByDistrict = async (districtId) => {
 
 /**
  * Get province by ID with districts
- * @param {number} id - Province ID
- * @returns {Promise<object>} Province with districts
+ * Lấy chi tiết Tỉnh kèm danh sách Quận
+ * @param {number} id - ID Tỉnh.
+ * @returns {Promise<object>} Tỉnh và danh sách quận.
  */
 const getProvinceById = async (id) => {
     const province = await prisma.province.findUnique({
@@ -109,8 +118,9 @@ const getProvinceById = async (id) => {
 
 /**
  * Get district by ID with wards
- * @param {number} id - District ID
- * @returns {Promise<object>} District with wards
+ * Lấy chi tiết Quận kèm danh sách Phường
+ * @param {number} id - ID Quận.
+ * @returns {Promise<object>} Quận và danh sách phường.
  */
 const getDistrictById = async (id) => {
     const district = await prisma.district.findUnique({
@@ -143,8 +153,12 @@ const getDistrictById = async (id) => {
 
 /**
  * Search locations
- * @param {string} query - Search query
- * @returns {Promise<object>} Search results
+ * Tìm kiếm địa điểm
+ *
+ * Chức năng: Search box tìm tỉnh/huyện/xã.
+ * Luồng xử lý: Tìm kiếm đồng thời trong 3 bảng Province, District, Ward.
+ * @param {string} query - Từ khóa tìm kiếm.
+ * @returns {Promise<object>} Kết quả tìm kiếm gộp.
  */
 const searchLocations = async (query) => {
     if (!query || query.length < 2) {

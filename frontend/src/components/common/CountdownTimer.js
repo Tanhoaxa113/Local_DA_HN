@@ -3,11 +3,13 @@
 /**
  * Countdown Timer Component
  * Displays remaining time until a deadline with visual feedback
+ * Component đếm ngược thời gian, hiển thị thời gian còn lại
  */
 import { useState, useEffect } from 'react';
 
 /**
  * Format time to display string
+ * Định dạng thời gian thành chuỗi
  * @param {number} seconds - Total seconds remaining
  * @returns {string} Formatted time string
  */
@@ -55,6 +57,7 @@ export default function CountdownTimer({
         };
 
         // Initial calculation
+        // Tính toán ban đầu
         const initialTime = calculateTimeLeft();
         setTimeLeft(initialTime);
         setIsExpired(initialTime <= 0);
@@ -65,6 +68,7 @@ export default function CountdownTimer({
         }
 
         // Update every second
+        // Cập nhật mỗi giây
         const interval = setInterval(() => {
             const remaining = calculateTimeLeft();
             setTimeLeft(remaining);
@@ -80,6 +84,7 @@ export default function CountdownTimer({
     }, [deadline, onExpire]);
 
     // Size classes
+    // Các class kích thước
     const sizeClasses = {
         sm: 'text-sm',
         md: 'text-base',
@@ -87,6 +92,7 @@ export default function CountdownTimer({
     };
 
     // Color based on time remaining
+    // Màu sắc dựa trên thời gian còn lại
     const getColorClass = () => {
         if (isExpired) return 'text-error';
         if (timeLeft <= 60) return 'text-error animate-pulse'; // Last minute
@@ -95,6 +101,7 @@ export default function CountdownTimer({
     };
 
     // Progress percentage (assuming 15 min = 900 seconds as max)
+    // Phần trăm tiến trình (giả sử max là 15 phút)
     const maxTime = 15 * 60; // 15 minutes
     const progress = Math.min(100, (timeLeft / maxTime) * 100);
 
@@ -119,10 +126,10 @@ export default function CountdownTimer({
             <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
                 <div
                     className={`h-full transition-all duration-1000 ${timeLeft <= 60
-                            ? 'bg-error'
-                            : timeLeft <= 300
-                                ? 'bg-warning'
-                                : 'bg-accent'
+                        ? 'bg-error'
+                        : timeLeft <= 300
+                            ? 'bg-warning'
+                            : 'bg-accent'
                         }`}
                     style={{ width: `${progress}%` }}
                 />

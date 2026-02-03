@@ -1,6 +1,7 @@
 /**
  * Server Entry Point
  * Starts the Express server with Socket.io
+ * Điểm khởi chạy Server (Express + Socket.io)
  */
 const http = require('http');
 const app = require('./app');
@@ -9,12 +10,15 @@ const jobs = require('./jobs');
 const socket = require('./socket');
 
 // Create HTTP server
+// Tạo HTTP Server từ Express App
 const server = http.createServer(app);
 
 // Initialize Socket.io
+// Khởi tạo Socket.io với Server vừa tạo
 socket.init(server);
 
 // Start server
+// Khởi chạy Server lắng nghe Port
 const PORT = config.app.port;
 
 server.listen(PORT, () => {
@@ -27,10 +31,12 @@ server.listen(PORT, () => {
     console.log('================================================');
 
     // Start scheduled jobs
+    // Bắt đầu chạy các Cron Job
     jobs.startAll();
 });
 
 // Handle unhandled promise rejections
+// Bắt lỗi Promise Rejection không được xử lý (tránh crash app)
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     // Don't exit in development, but log and continue
@@ -42,6 +48,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Handle uncaught exceptions
+// Bắt lỗi Exception không được xử lý
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     if (config.app.env === 'production') {
@@ -52,6 +59,7 @@ process.on('uncaughtException', (error) => {
 });
 
 // Graceful shutdown
+// Xử lý tắt server an toàn (SIGTERM)
 process.on('SIGTERM', () => {
     console.log('SIGTERM received. Shutting down gracefully...');
     server.close(() => {

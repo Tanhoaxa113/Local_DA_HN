@@ -1,6 +1,7 @@
 /**
  * Loyalty Service
  * Handles loyalty points, tier management, and discount eligibility with Lazy Reset
+ * Quản lý điểm thưởng, hạng thành viên và ưu đãi (Cơ chế Reset trễ)
  */
 const prisma = require('../config/database');
 const config = require('../config');
@@ -8,8 +9,15 @@ const ApiError = require('../utils/ApiError');
 
 /**
  * Get user's loyalty status
- * @param {number} userId - User ID
- * @returns {Promise<object>} Loyalty status
+ * Lấy thông tin điểm và hạng thành viên
+ *
+ * Chức năng: Xem thông tin Loyalty của user.
+ * Luồng xử lý:
+ * 1. Lấy thông tin User kèm Tier.
+ * 2. Tính toán số lần đã dùng mã giảm giá trong tháng hiện tại (cơ chế Lazy Reset - chỉ query tháng này).
+ * 3. Tính toán tiến độ thăng hạng (còn thiếu bao nhiêu điểm để lên hạng tiếp theo).
+ * @param {number} userId - ID User.
+ * @returns {Promise<object>} Status, Tier, Discount Info, Next Tier Info.
  */
 const getStatus = async (userId) => {
     const user = await prisma.user.findUnique({
@@ -80,8 +88,13 @@ const getStatus = async (userId) => {
 
 /**
  * Check discount eligibility using Lazy Reset logic
- * @param {number} userId - User ID
- * @returns {Promise<object>} Eligibility result
+ * Kiểm tra quyền lợi giảm giá
+ *
+ * Chức năng: Kiểm tra xem user còn lượt giảm giá tháng này không.
+ * Logic Lazy Reset: Không cần chạy batch job reset mỗi tháng. Chỉ cần query chính xác `month` và `year` hiện tại.
+ * Nếu chưa có record cho tháng này -> Tự hiểu là chưa dùng lần nào (0).
+ * @param {number} userId - ID User.
+ * @returns {Promise<object>} Kết quả kiểm tra.
  */
 const checkDiscountEligibility = async (userId) => {
     const user = await prisma.user.findUnique({
@@ -140,8 +153,12 @@ const checkDiscountEligibility = async (userId) => {
 
 /**
  * Record discount usage
- * @param {number} userId - User ID
- * @returns {Promise<object>} Updated usage
+ * Ghi nhận đã sử dụng giảm giá
+ *
+ * Chức năng: Tăng số lần sử dụng giảm giá trong tháng.
+ * Luồng xử lý: Sử dụng `upsert` (Create nếu chưa có, Update nếu đã có) vào bảng Log.
+ * @param {number} userId - ID User.
+ * @returns {Promise<object>} Usage record.
  */
 const recordDiscountUsage = async (userId) => {
     const user = await prisma.user.findUnique({
@@ -183,9 +200,12 @@ const recordDiscountUsage = async (userId) => {
 
 /**
  * Calculate loyalty points for an order
- * @param {number} orderTotal - Order total amount
- * @param {number} tierMultiplier - Tier point multiplier
- * @returns {number} Points earned
+ * Tính điểm thưởng cho đơn hàng
+ *
+ * Công thức: (Tổng tiền / Hệ số quy đổi) * Hệ số nhân của hạng thành viên.
+ * @param {number} orderTotal - Tổng tiền.
+ * @param {number} tierMultiplier - Hệ số nhân (VD: Vàng x1.5).
+ * @returns {number} Số điểm nhận được.
  */
 const calculatePoints = (orderTotal, tierMultiplier = 1) => {
     // 1 point per X VND (configurable)
@@ -195,9 +215,13 @@ const calculatePoints = (orderTotal, tierMultiplier = 1) => {
 
 /**
  * Add points to user
- * @param {number} userId - User ID
- * @param {number} points - Points to add
- * @returns {Promise<object>} Updated user
+ * Cộng điểm tích lũy
+ *
+ * Chức năng: Cộng điểm sau khi hoàn thành đơn.
+ * Side Effect: Sau khi cộng điểm, tự động kiểm tra xem có được thăng hạng không (`checkTierUpgrade`).
+ * @param {number} userId - ID User.
+ * @param {number} points - Số điểm cộng.
+ * @returns {Promise<object>} User đã update.
  */
 const addPoints = async (userId, points) => {
     if (points <= 0) return null;
@@ -218,9 +242,12 @@ const addPoints = async (userId, points) => {
 
 /**
  * Deduct points from user
- * @param {number} userId - User ID
- * @param {number} points - Points to deduct
- * @returns {Promise<object>} Updated user
+ * Trừ điểm tích lũy
+ *
+ * Chức năng: User dùng điểm để thanh toán hoặc đổi quà.
+ * @param {number} userId - ID User.
+ * @param {number} points - Số điểm trừ.
+ * @returns {Promise<object>} User đã update.
  */
 const deductPoints = async (userId, points) => {
     const user = await prisma.user.findUnique({
@@ -245,8 +272,15 @@ const deductPoints = async (userId, points) => {
 
 /**
  * Check and perform tier upgrade if eligible
- * @param {number} userId - User ID
- * @returns {Promise<object|null>} New tier if upgraded, null otherwise
+ * Kiểm tra và nâng hạng thành viên
+ *
+ * Chức năng: So sánh điểm hiện tại với điểm yêu cầu các hạng.
+ * Luồng xử lý:
+ * 1. Lấy danh sách Hạng sắp xếp giảm dần theo điểm yêu cầu.
+ * 2. Tìm hạng cao nhất mà user đủ điểm.
+ * 3. Nếu hạng đó khác hạng hiện tại -> Update TierId.
+ * @param {number} userId - ID User.
+ * @returns {Promise<object|null>} Hạng mới nếu được thăng hạng, null nếu không.
  */
 const checkTierUpgrade = async (userId) => {
     const user = await prisma.user.findUnique({
@@ -281,8 +315,9 @@ const checkTierUpgrade = async (userId) => {
 
 /**
  * Get value of points in currency
- * @param {number} points - Number of points
- * @returns {number} Value in VND
+ * Quy đổi điểm ra tiền
+ * @param {number} points - Số điểm.
+ * @returns {number} Giá trị tiền VND.
  */
 const getPointValue = (points) => {
     return points * (config.loyalty.pointValue / 100);
@@ -290,8 +325,11 @@ const getPointValue = (points) => {
 
 /**
  * Get leaderboard (top users by points)
- * @param {number} limit - Number of users to return
- * @returns {Promise<object[]>} Top users
+ * Xếp hạng thành viên
+ *
+ * Chức năng: Lấy danh sách Top khách hàng tích điểm nhiều nhất.
+ * @param {number} limit - Số lượng lấy (default 10).
+ * @returns {Promise<object[]>} Danh sách User kèm Rank.
  */
 const getLeaderboard = async (limit = 10) => {
     const users = await prisma.user.findMany({

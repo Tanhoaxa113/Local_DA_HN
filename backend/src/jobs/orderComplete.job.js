@@ -1,6 +1,7 @@
 /**
  * Order Completion Job
  * Automatically completes delivered orders after X days and awards loyalty points
+ * Job tự động hoàn thành đơn hàng sau X ngày giao hàng và cộng điểm thưởng
  */
 const cron = require('node-cron');
 const prisma = require('../config/database');
@@ -11,6 +12,7 @@ const { OrderStatus } = require('../utils/orderStateMachine');
 /**
  * Process orders ready for auto-completion
  * Orders that have been delivered for X days become completed
+ * Xử lý các đơn hàng đủ điều kiện hoàn thành (Đã giao hàng quá X ngày)
  */
 const processCompletableOrders = async () => {
     try {
@@ -21,6 +23,7 @@ const processCompletableOrders = async () => {
         // Find orders that are:
         // - Status: DELIVERED
         // - deliveredAt is older than completion threshold
+        // Tìm đơn đã giao quá completionDays
         const completableOrders = await prisma.order.findMany({
             where: {
                 status: OrderStatus.DELIVERED,
@@ -44,12 +47,14 @@ const processCompletableOrders = async () => {
         for (const order of completableOrders) {
             try {
                 // Calculate loyalty points
+                // Tính điểm thưởng
                 const points = loyaltyService.calculatePoints(
                     Number(order.totalAmount),
                     Number(order.user.tier?.pointMultiplier) || 1
                 );
 
                 // Update order and award points
+                // Cập nhật trạng thái đơn, lưu lịch sử, cộng điểm cho user (Transaction)
                 await prisma.$transaction([
                     prisma.order.update({
                         where: { id: order.id },
@@ -77,6 +82,7 @@ const processCompletableOrders = async () => {
                 ]);
 
                 // Check for tier upgrade
+                // Kiểm tra thăng hạng thành viên
                 await loyaltyService.checkTierUpgrade(order.userId);
 
                 console.log(`[OrderCompleteJob] Completed order ${order.orderNumber}, awarded ${points} points`);
@@ -95,6 +101,7 @@ const processCompletableOrders = async () => {
 /**
  * Start the cron job
  * Runs daily at midnight
+ * Khởi chạy Job (Mỗi ngày lúc 00:00)
  */
 const start = () => {
     // Run at 00:00 every day

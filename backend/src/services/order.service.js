@@ -1,6 +1,6 @@
 /**
  * Order Service
- * Handles order creation, management, and status transitions
+ * Xử lý tạo đơn hàng, quản lý và chuyển đổi trạng thái
  */
 const prisma = require('../config/database');
 const config = require('../config');
@@ -20,8 +20,15 @@ const {
 
 /**
  * Generate unique order number
- * Format: YYYYMMDD-XXXXX (e.g., 20260115-00001)
- * @returns {Promise<string>} Unique order number
+ * Tạo mã đơn hàng duy nhất
+ *
+ * Chức năng: Tạo mã đơn hàng theo định dạng ngày tháng + số thứ tự.
+ * Format: YYYYMMDD-XXXXX (Ví dụ: 20260115-00001).
+ * Luồng xử lý:
+ * 1. Lấy ngày hiện tại làm prefix.
+ * 2. Đếm số đơn hàng đã tạo trong ngày.
+ * 3. Cộng thêm 1 và padding số 0 để đủ 5 chữ số.
+ * @returns {Promise<string>} Mã đơn hàng.
  */
 const generateOrderNumber = async () => {
     const today = new Date();
@@ -46,9 +53,27 @@ const generateOrderNumber = async () => {
 
 /**
  * Create a new order from cart
- * @param {number} userId - User ID
- * @param {object} orderData - Order data
- * @returns {Promise<object>} Created order
+ * Tạo đơn hàng từ giỏ hàng
+ *
+ * Chức năng: Chuyển đổi giỏ hàng hiện tại của user thành đơn hàng mới.
+ * Luồng xử lý:
+ * 1. Validate giỏ hàng (kiểm tra tồn kho, giá cả...).
+ * 2. Kiểm tra tính hợp lệ của địa chỉ giao hàng.
+ * 3. Lấy thông tin User và hạng thành viên (Tier) để tính giảm giá.
+ * 4. Tính toán tổng tiền: Subtotal + Ship - Discount.
+ * 5. Tạo mã đơn hàng.
+ * 6. Dùng Transaction (`prisma.$transaction`) để:
+ *    - Tạo record Order.
+ *    - Tạo các OrderItem.
+ *    - Cập nhật số lượng đã bán (`totalSold`) của sản phẩm.
+ *    - Tạo lịch sử trạng thái (`OrderStatusHistory`).
+ * 7. Khóa tồn kho (`stockService.lockStock`).
+ * 8. Xóa giỏ hàng.
+ * 9. Ghi nhận lượt dùng ưu đãi thành viên (nếu có).
+ * 10. Gửi thông báo Socket cho Admin và User.
+ * @param {number} userId - ID người dùng.
+ * @param {object} orderData - Dữ liệu đơn hàng (địa chỉ, phương thức thanh toán...).
+ * @returns {Promise<object>} Đơn hàng vừa tạo.
  */
 const createFromCart = async (userId, orderData) => {
     const { addressId, paymentMethod, note } = orderData;
@@ -213,9 +238,12 @@ const createFromCart = async (userId, orderData) => {
 
 /**
  * Get order by ID
- * @param {number} id - Order ID
- * @param {number} userId - User ID (optional, for ownership check)
- * @returns {Promise<object>} Order with details
+ * Lấy chi tiết đơn hàng
+ *
+ * Chức năng: Lấy thông tin đầy đủ của đơn hàng.
+ * @param {number} id - Order ID.
+ * @param {number} userId - ID user (để kiểm tra quyền sở hữu nếu cần).
+ * @returns {Promise<object>} Đơn hàng kèm Items, Payment, History.
  */
 const getById = async (id, userId = null) => {
     const where = { id };
@@ -265,9 +293,12 @@ const getById = async (id, userId = null) => {
 
 /**
  * Get order by order number
- * @param {string} orderNumber - Order number
- * @param {number} userId - User ID (optional, for ownership check)
- * @returns {Promise<object>} Order with details
+ * Lấy đơn hàng theo mã
+ *
+ * Chức năng: Tìm đơn hàng bằng mã đơn (ví dụ: 20240101-00001).
+ * @param {string} orderNumber - Mã đơn hàng.
+ * @param {number} userId - ID user.
+ * @returns {Promise<object>} Đơn hàng.
  */
 const getByOrderNumber = async (orderNumber, userId = null) => {
     const where = { orderNumber };
@@ -317,8 +348,15 @@ const getByOrderNumber = async (orderNumber, userId = null) => {
 
 /**
  * Get orders with filtering and pagination
- * @param {object} options - Query options
- * @returns {Promise<object>} Paginated orders
+ * Lấy danh sách đơn hàng
+ *
+ * Chức năng: Lấy danh sách đơn hàng cho Admin hoặc User (Lịch sử mua hàng).
+ * Luồng xử lý:
+ * 1. Xây dựng điều kiện lọc (User, Status, Date...).
+ * 2. Phân trang.
+ * 3. Trả về danh sách kèm items tóm tắt (3 items đầu).
+ * @param {object} options - Các tùy chọn lọc.
+ * @returns {Promise<object>} Danh sách phân trang.
  */
 const getAll = async (options = {}) => {
     const {
@@ -420,12 +458,26 @@ const getAll = async (options = {}) => {
 
 /**
  * Update order status with state machine validation
- * @param {number} orderId - Order ID
- * @param {string} newStatus - New status
- * @param {number} changedBy - User ID making the change
- * @param {string} note - Optional note
- * @param {string} userRole - Role of user making the change
- * @returns {Promise<object>} Updated order
+ * Cập nhật trạng thái đơn hàng
+ *
+ * Chức năng: Chuyển đổi trạng thái đơn hàng (duyệt, giao, hủy...) an toàn.
+ * Luồng xử lý:
+ * 1. Kiểm tra đơn tồn tại.
+ * 2. `validateTransition`: Kiểm tra xem từ trạng thái cũ sang mới có hợp lệ không (dựa trên Rules).
+ * 3. Xử lý logic phụ (Side effects):
+ *    - `shouldReleaseStock`: Nếu hủy/hết hạn -> Nhả tồn kho.
+ *    - `shouldConfirmStock`: Nếu xác nhận đơn -> Trừ tồn kho thật.
+ *    - `shouldReturnStock`: Nếu hoàn trả -> Cộng lại tồn kho.
+ *    - `shouldAwardPoints`: Nếu hoàn thành -> Cộng điểm tích lũy.
+ * 4. Cập nhật các mốc thời gian (ShippedAt, DeliveredAt...).
+ * 5. Update DB và ghi log StatusHistory.
+ * 6. Bắn Socket thông báo real-time.
+ * @param {number} orderId - ID đơn hàng.
+ * @param {string} newStatus - Trạng thái mới.
+ * @param {number} changedBy - ID người thực hiện.
+ * @param {string} note - Ghi chú.
+ * @param {string} userRole - Vai trò người thực hiện (để check quyền).
+ * @returns {Promise<object>} Đơn hàng đã update.
  */
 const updateStatus = async (orderId, newStatus, changedBy = null, note = '', userRole = 'SYSTEM') => {
     const order = await prisma.order.findUnique({
@@ -529,11 +581,19 @@ const updateStatus = async (orderId, newStatus, changedBy = null, note = '', use
 
 /**
  * Cancel order
- * @param {number} orderId - Order ID
- * @param {number} userId - User ID requesting cancellation
- * @param {string} reason - Cancellation reason
- * @param {string} userRole - User role
- * @returns {Promise<object>} Cancelled order
+ * Hủy đơn hàng
+ *
+ * Chức năng: User hoặc Admin hủy đơn.
+ * Luồng xử lý:
+ * 1. Kiểm tra đơn.
+ * 2. Kiểm tra quyền sở hữu (nếu là Customer).
+ * 3. Kiểm tra xem trạng thái hiện tại có cho phép hủy không (`isCancellable`).
+ * 4. Gọi `updateStatus` để chuyển sang CANCELLED (logic nhả kho sẽ chạy trong đó).
+ * @param {number} orderId - ID đơn hàng.
+ * @param {number} userId - ID người yêu cầu.
+ * @param {string} reason - Lý do hủy.
+ * @param {string} userRole - Vai trò.
+ * @returns {Promise<object>} Đơn hàng đã hủy.
  */
 const cancel = async (orderId, userId, reason = '', userRole = 'CUSTOMER') => {
     const order = await prisma.order.findUnique({
@@ -563,10 +623,13 @@ const cancel = async (orderId, userId, reason = '', userRole = 'CUSTOMER') => {
 
 /**
  * Request refund for delivered order
- * @param {number} orderId - Order ID
- * @param {number} userId - User ID requesting refund
- * @param {string} reason - Refund reason
- * @returns {Promise<object>} Updated order
+ * Yêu cầu hoàn tiền
+ *
+ * Chức năng: User yêu cầu hoàn tiền sau khi nhận hàng.
+ * @param {number} orderId - Order ID.
+ * @param {number} userId - User ID.
+ * @param {string} reason - Lý do.
+ * @returns {Promise<object>} Đơn hàng.
  */
 const requestRefund = async (orderId, userId, reason) => {
     const order = await prisma.order.findUnique({
@@ -590,7 +653,15 @@ const requestRefund = async (orderId, userId, reason) => {
 
 /**
  * Award loyalty points for completed order
- * @param {number} orderId - Order ID
+ * Cộng điểm tích lũy
+ *
+ * Chức năng: Tính và cộng điểm cho user khi đơn hoàn thành.
+ * Luồng xử lý:
+ * 1. Tính điểm cơ bản: Total / Tỷ lệ đổi điểm.
+ * 2. Nhân hệ số theo Rank thành viên.
+ * 3. Update User (cộng điểm) và Order (ghi nhận điểm đã cộng).
+ * 4. Kiểm tra xem có đủ điểm lên hạng không (`checkTierUpgrade`).
+ * @param {number} orderId - Order ID.
  */
 const awardLoyaltyPoints = async (orderId) => {
     const order = await prisma.order.findUnique({
@@ -627,9 +698,10 @@ const awardLoyaltyPoints = async (orderId) => {
 
 /**
  * Calculate shipping fee
- * @param {number} subtotal - Order subtotal
- * @param {string} shippingMethod - Shipping method (standard/express)
- * @returns {number} Shipping fee
+ * Tính phí ship
+ * @param {number} subtotal - Tổng tiền hàng.
+ * @param {string} shippingMethod - Phương thức vận chuyển.
+ * @returns {number} Phí ship.
  */
 const calculateShippingFee = (subtotal, shippingMethod = 'standard') => {
     if (shippingMethod === 'express') {
@@ -641,9 +713,12 @@ const calculateShippingFee = (subtotal, shippingMethod = 'standard') => {
 
 /**
  * Get valid next statuses for an order
- * @param {number} orderId - Order ID
- * @param {string} userRole - User role
- * @returns {Promise<object[]>} Valid next statuses
+ * Lấy các trạng thái tiếp theo hợp lệ
+ *
+ * Chức năng: Helper cho FE biết có thể chuyển đơn sang trạng thái nào tiếp theo.
+ * @param {number} orderId - Order ID.
+ * @param {string} userRole - User Role.
+ * @returns {Promise<object[]>} Danh sách trạng thái.
  */
 const getNextStatuses = async (orderId, userRole) => {
     const order = await prisma.order.findUnique({
@@ -657,6 +732,13 @@ const getNextStatuses = async (orderId, userRole) => {
     return getValidNextStatuses(order.status, userRole);
 };
 
+/**
+ * Auto confirm refunds
+ * Tự động xác nhận hoàn tiền
+ *
+ * Chức năng: Cron job, chạy định kỳ.
+ * Logic: Tìm các đơn đã hoàn tiền (Refunded) quá 3 ngày mà chưa xác nhận -> Tự động xác nhận.
+ */
 const autoConfirmRefunds = async () => {
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);

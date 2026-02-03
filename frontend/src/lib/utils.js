@@ -1,9 +1,11 @@
 /**
  * Utility Functions
+ * Các hàm tiện ích dùng chung
  */
 
 /**
  * Format price in VND
+ * Định dạng giá tiền VNĐ
  * @param {number} price - Price in VND
  * @returns {string} Formatted price string
  */
@@ -17,6 +19,7 @@ export function formatPrice(price) {
 
 /**
  * Format number with thousand separators
+ * Định dạng số với dấu phân cách hàng nghìn
  * @param {number} num - Number to format
  * @returns {string} Formatted number string
  */
@@ -27,6 +30,7 @@ export function formatNumber(num) {
 
 /**
  * Format date
+ * Định dạng ngày tháng
  * @param {string|Date} date - Date to format
  * @param {object} options - Intl.DateTimeFormat options
  * @returns {string} Formatted date string
@@ -47,6 +51,7 @@ export function formatDate(date, options = {}) {
 
 /**
  * Format relative time (e.g., "2 giờ trước")
+ * Định dạng thời gian tương đối
  * @param {string|Date} date - Date to format
  * @returns {string} Relative time string
  */
@@ -78,6 +83,7 @@ export function formatRelativeTime(date) {
 
 /**
  * Truncate text with ellipsis
+ * Cắt ngắn văn bản nếu quá dài
  * @param {string} text - Text to truncate
  * @param {number} maxLength - Maximum length
  * @returns {string} Truncated text
@@ -89,6 +95,7 @@ export function truncateText(text, maxLength = 100) {
 
 /**
  * Generate slug from text
+ * Tạo Slug từ text (Tiếng Việt có dấu -> Tiếng Việt không dấu)
  * @param {string} text - Text to slugify
  * @returns {string} Slug
  */
@@ -115,6 +122,7 @@ export function slugify(text) {
 
 /**
  * Debounce function
+ * Hàm Debounce (Trì hoãn thực thi)
  * @param {Function} func - Function to debounce
  * @param {number} wait - Wait time in ms
  * @returns {Function} Debounced function
@@ -133,6 +141,7 @@ export function debounce(func, wait = 300) {
 
 /**
  * Throttle function
+ * Hàm Throttle (Giới hạn số lần thực thi)
  * @param {Function} func - Function to throttle
  * @param {number} limit - Limit time in ms
  * @returns {Function} Throttled function
@@ -150,6 +159,7 @@ export function throttle(func, limit = 300) {
 
 /**
  * Classify value into type
+ * Kết hợp các class CSS lại với nhau
  * @param {*} value - Value to classify
  * @returns {string} Type string
  */
@@ -159,6 +169,7 @@ export function classNames(...classes) {
 
 /**
  * Get image URL with fallback
+ * Lấy URL hình ảnh, nếu lỗi thì dùng ảnh fallback
  * @param {string} imagePath - Image path
  * @param {string} fallback - Fallback image path
  * @returns {string} Image URL
@@ -180,6 +191,7 @@ export function getImageUrl(imagePath, fallback = "/images/placeholder.jpg") {
 
 /**
  * Calculate discount percentage
+ * Tính phần trăm giảm giá
  * @param {number} originalPrice - Original price
  * @param {number} salePrice - Sale price
  * @returns {number} Discount percentage
@@ -191,6 +203,7 @@ export function calculateDiscount(originalPrice, salePrice) {
 
 /**
  * Validate email
+ * Kiểm tra định dạng Email
  * @param {string} email - Email to validate
  * @returns {boolean} Is valid
  */
@@ -201,6 +214,7 @@ export function isValidEmail(email) {
 
 /**
  * Validate Vietnamese phone number
+ * Kiểm tra số điện thoại Việt Nam
  * @param {string} phone - Phone to validate
  * @returns {boolean} Is valid
  */
@@ -211,6 +225,7 @@ export function isValidPhone(phone) {
 
 /**
  * Get order status info
+ * Lấy thông tin hiển thị trạng thái đơn hàng (Label, Color)
  * @param {string} status - Order status
  * @returns {object} Status info with label, color, icon
  */

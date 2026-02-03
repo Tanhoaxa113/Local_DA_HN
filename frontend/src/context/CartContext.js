@@ -13,6 +13,7 @@ export function CartProvider({ children }) {
     const [isCartOpen, setIsCartOpen] = useState(false);
 
     // Fetch cart when user authenticates
+    // Lấy giỏ hàng khi người dùng đã đăng nhập hoặc dùng LocalStorage nếu chưa
     useEffect(() => {
         if (isAuthenticated) {
             fetchCart();
@@ -77,6 +78,7 @@ export function CartProvider({ children }) {
         async (variantId, quantity = 1, productInfo = null) => {
             if (isAuthenticated) {
                 // Authenticated user - use API
+                // Người dùng đã đăng nhập - Gọi API
                 try {
                     setLoading(true);
                     const response = await cartAPI.addItem(variantId, quantity);
@@ -94,6 +96,7 @@ export function CartProvider({ children }) {
                 }
             } else {
                 // Guest user - use localStorage
+                // Khách vãng lai - Lưu vào LocalStorage
                 const existingIndex = cart.items.findIndex(
                     (item) => item.variantId === variantId
                 );

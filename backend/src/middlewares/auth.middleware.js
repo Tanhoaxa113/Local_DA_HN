@@ -1,6 +1,7 @@
 /**
  * Authentication Middleware
  * JWT token verification and user attachment to request
+ * Middleware xác thực (Verify Token & Attach User)
  */
 const { verifyAccessToken } = require('../services/auth.service');
 const prisma = require('../config/database');
@@ -8,6 +9,7 @@ const ApiError = require('../utils/ApiError');
 
 /**
  * Extract token from Authorization header
+ * Lấy Token từ Header (Authorization: Bearer <token>)
  * @param {object} req - Express request object
  * @returns {string|null} Token or null
  */
@@ -31,6 +33,7 @@ const extractToken = (req) => {
  * Required authentication middleware
  * Verifies JWT and attaches user to request
  * Throws error if not authenticated
+ * Middleware yêu cầu đăng nhập bắt buộc
  */
 const authenticate = async (req, res, next) => {
     try {
@@ -74,6 +77,7 @@ const authenticate = async (req, res, next) => {
  * Optional authentication middleware
  * Attaches user to request if token is valid, but doesn't require authentication
  * Useful for public routes that show personalized content if logged in
+ * Middleware đăng nhập tùy chọn (Không bắt buộc, nhưng nếu có token hợp lệ thì attach user)
  */
 const optionalAuth = async (req, res, next) => {
     try {
@@ -106,6 +110,7 @@ const optionalAuth = async (req, res, next) => {
         next();
     } catch (error) {
         // Token invalid or expired, continue without user
+        // Nếu lỗi Token (hết hạn/sai), coi như khách vãng lai (không lỗi)
         req.user = null;
         next();
     }

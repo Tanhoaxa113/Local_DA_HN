@@ -18,10 +18,24 @@ const EyeSlashIcon = () => (
     </svg>
 );
 
+/**
+ * Login Page Component
+ * Trang Đăng nhập
+ * 
+ * Chức năng: Cho phép người dùng đăng nhập vào hệ thống
+ * Luồng xử lý:
+ * 1. Nhập email và password
+ * 2. Gọi API login qua AuthContext
+ * 3. Xử lý kết quả:
+ *    - Thành công: Chuyển hướng về trang chủ
+ *    - Thất bại: Hiển thị lỗi
+ */
 export default function LoginPage() {
     const router = useRouter();
     const { login, loading: authLoading } = useAuth();
 
+    // Form state
+    // Trạng thái form
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -30,23 +44,37 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    /**
+     * Handle input change
+     * Xử lý thay đổi giá trị input
+     */
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
         setError("");
     };
 
+    /**
+     * Handle form submission
+     * Xử lý đăng nhập
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
         setLoading(true);
 
         try {
+            // Call login from AuthContext
+            // Gọi hàm login từ AuthContext
             const result = await login(formData.email, formData.password);
 
             if (result.success) {
+                // Redirect to home on success
+                // Chuyển hướng về trang chủ nếu thành công
                 router.push("/");
             } else {
+                // Show error message
+                // Hiển thị thông báo lỗi
                 setError(result.error || "Đăng nhập thất bại. Vui lòng thử lại.");
             }
         } catch (err) {

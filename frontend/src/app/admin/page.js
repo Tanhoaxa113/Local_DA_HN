@@ -38,6 +38,17 @@ const ChevronRightIcon = () => (
     </svg>
 );
 
+/**
+ * Admin Dashboard Page
+ * Trang thống kê (Dashboard) dành cho Admin
+ * 
+ * Chức năng: Hiển thị tổng quan tình hình kinh doanh
+ * Luồng xử lý:
+ * 1. Fetch dữ liệu thống kê khi load trang (fetchDashboardData)
+ * 2. Lấy đơn hàng gần đây (để tính doanh thu, số lượng đơn)
+ * 3. Lấy sản phẩm sắp hết hàng (Low Stock)
+ * 4. Hiển thị các thẻ thống kê và bảng đơn hàng
+ */
 export default function AdminDashboard() {
     const [stats, setStats] = useState({
         totalRevenue: 0,
@@ -54,9 +65,14 @@ export default function AdminDashboard() {
         fetchDashboardData();
     }, []);
 
+    /**
+     * Fetch all dashboard data
+     * Lấy dữ liệu thống kê cho dashboard
+     */
     const fetchDashboardData = async () => {
         try {
             // Fetch orders for statistics
+            // Lấy danh sách đơn hàng để tính toán thống kê
             const ordersRes = await ordersAPI.getAll({ limit: 10 });
             if (ordersRes.success) {
                 // API returns { data: { data: [...], pagination: {...} } }
@@ -66,6 +82,7 @@ export default function AdminDashboard() {
                 setRecentOrders(orders.slice(0, 5));
 
                 // Calculate stats from orders
+                // Tính toán doanh thu và số đơn chờ xử lý
                 const totalRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount || o.total || 0), 0);
                 const pendingOrders = orders.filter(o =>
                     ["PENDING_PAYMENT", "PENDING_CONFIRMATION", "PREPARING", "READY_TO_SHIP"].includes(o.status)
@@ -80,6 +97,7 @@ export default function AdminDashboard() {
             }
 
             // Fetch low stock products
+            // Lấy danh sách sản phẩm sắp hết hàng (để cảnh báo)
             const productsRes = await productsAPI.getAll({ lowStock: true, limit: 5 });
             if (productsRes.success) {
                 const products = productsRes.data?.items || productsRes.data || [];

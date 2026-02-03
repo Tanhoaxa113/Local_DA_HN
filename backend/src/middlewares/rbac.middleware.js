@@ -1,12 +1,14 @@
 /**
  * Role-Based Access Control (RBAC) Middleware
  * Handles role and permission checks for protected routes
+ * Middleware kiểm soát truy cập dựa trên Role (Phân quyền)
  */
 const ApiError = require('../utils/ApiError');
 
 /**
  * Role hierarchy levels
  * Higher number = more permissions
+ * Cấp độ quyền hạn (Số càng cao quyền càng lớn)
  */
 const ROLE_HIERARCHY = {
     CUSTOMER: 1,
@@ -18,6 +20,7 @@ const ROLE_HIERARCHY = {
 
 /**
  * Permission definitions mapped to roles
+ * Định nghĩa quyền hạn cụ thể cho từng Role
  */
 const ROLE_PERMISSIONS = {
     CUSTOMER: [
@@ -61,12 +64,13 @@ const ROLE_PERMISSIONS = {
         'users:read',
     ],
     ADMIN: [
-        '*', // All permissions
+        '*', // All permissions - Toàn quyền
     ],
 };
 
 /**
  * Check if user has required role
+ * Kiểm tra xem user có thuộc danh sách Role cho phép không
  * @param  {...string} allowedRoles - Roles that are allowed
  * @returns {function} Express middleware
  */
@@ -98,6 +102,7 @@ const requireRole = (...allowedRoles) => {
 
 /**
  * Check if user has at least the specified role level
+ * Kiểm tra xem user có cấp độ quyền hạn tối thiểu yêu cầu không
  * @param {string} minRole - Minimum role required
  * @returns {function} Express middleware
  */
@@ -126,6 +131,7 @@ const requireRoleLevel = (minRole) => {
 
 /**
  * Check if user has specific permission
+ * Kiểm tra quyền hạn cụ thể (Granular Permissions)
  * @param {string} permission - Required permission
  * @returns {function} Express middleware
  */
@@ -165,6 +171,7 @@ const requirePermission = (permission) => {
 
 /**
  * Check if user owns the resource or has admin/manager role
+ * Kiểm tra quyền sở hữu tài nguyên hoặc có quyền Admin/Manager
  * @param {function} getResourceOwnerId - Function to extract owner ID from request
  * @returns {function} Express middleware
  */

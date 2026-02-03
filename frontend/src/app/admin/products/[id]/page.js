@@ -46,12 +46,23 @@ const defaultVariant = {
     isNew: true,
 };
 
+/**
+ * Admin Edit Product Page
+ * Trang Chỉnh sửa sản phẩm (Admin)
+ * 
+ * Chức năng:
+ * - Chỉnh sửa thông tin cơ bản sản phẩm (Tên, mô tả, danh mục...)
+ * - Quản lý biến thể (Size, màu, giá, tồn kho...)
+ * - Quản lý hình ảnh (Thêm, xóa, đặt ảnh đại diện)
+ * - Xóa sản phẩm
+ */
 export default function AdminEditProductPage() {
     const router = useRouter();
     const params = useParams();
     const productId = params.id;
     const fileInputRef = useRef(null);
 
+    // Form data state
     const [formData, setFormData] = useState({
         name: "",
         slug: "",
@@ -61,14 +72,22 @@ export default function AdminEditProductPage() {
         isActive: true,
         isFeatured: false,
     });
+
+    // Management states
     const [variants, setVariants] = useState([]);
     const [existingImages, setExistingImages] = useState([]);
     const [newImages, setNewImages] = useState([]);
     const [newImageFiles, setNewImageFiles] = useState([]);
+
+    // Tracking deletions
     const [deletedImageIds, setDeletedImageIds] = useState([]);
     const [deletedVariantIds, setDeletedVariantIds] = useState([]);
+
+    // Reference data
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
+
+    // UI states
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
